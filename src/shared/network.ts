@@ -1,11 +1,11 @@
 import { Networking } from "@flamework/networking";
 
 interface ServerEvents {
-	// Add server events here as needed
+	requestEnterBall(): void;
 }
 
 interface ClientEvents {
-	// Add client events here as needed
+	ballReady(ball: Model): void;
 }
 
 interface ServerFunctions {
