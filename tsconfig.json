@@ -3,9 +3,6 @@
     // required
     "allowSyntheticDefaultImports": true,
     "downlevelIteration": true,
-    "jsx": "react",
-    "jsxFactory": "React.createElement",
-    "jsxFragmentFactory": "React.Fragment",
     "module": "commonjs",
     "moduleResolution": "Node",
     "moduleDetection": "force",
@@ -27,15 +24,7 @@
       {
         "transform": "rbxts-transformer-flamework",
         "obfuscation": false
-      },
-			{
-				"transform": "rbxts-transform-debug",
-				"enabled": true,
-				"verbose": true,
-				"environmentRequires": {
-					//"NODE_ENV": "development"
-				},
-			}
+      }
     ]
   }
 }

@@ -1,29 +1,20 @@
-/* eslint-disable no-unused-vars */
 import { Networking } from "@flamework/networking";
-import { BroadcastAction } from "@rbxts/reflex";
 
-
-// client -> server
 interface ServerEvents {
-	reflex: {
-		start: () => void;
-	},
-	placeCookableBurger(guid: string): void;
-	giveCookedBurger(guid: string): void;
+	// Add server events here as needed
 }
 
-interface ServerFunctions { }
-
-// server -> client
 interface ClientEvents {
-	reflex: {
-		dispatch: (actions: Array<BroadcastAction>) => void;
-		hydrate: () => void;
-		start: () => void;
-	}
+	// Add client events here as needed
 }
 
-interface ClientFunctions { }
+interface ServerFunctions {
+	// Add server functions here as needed
+}
+
+interface ClientFunctions {
+	// Add client functions here as needed
+}
 
 export const GlobalEvents = Networking.createEvent<ServerEvents, ClientEvents>();
 export const GlobalFunctions = Networking.createFunction<ServerFunctions, ClientFunctions>();

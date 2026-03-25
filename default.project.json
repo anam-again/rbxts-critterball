@@ -1,5 +1,5 @@
 {
-  "name": "Roblox-TS-Template",
+  "name": "critterball",
   "globIgnorePaths": ["**/package.json", "**/tsconfig.json"],
   "tree": {
     "$className": "DataModel",

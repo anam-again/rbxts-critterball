@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone:*)",
+      "Bash(xargs rm:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(aftman trust:*)",
+      "Bash(aftman add:*)",
+      "Bash(asphalt:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(cat:*)",
+      "WebSearch",
+      "WebFetch(domain:devforum.roblox.com)",
+      "Bash(npm search:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
