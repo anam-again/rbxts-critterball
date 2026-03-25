@@ -25,6 +25,17 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - Character becomes massless inside ball
 - Customizable friction and elasticity
 
+## Multi-Place Universe
+
+Critterball uses a multi-place architecture with separate places for different game modes:
+
+| Place | Description | Place ID |
+|-------|-------------|----------|
+| Lobby | Walk-around social hub | 105871392171885 |
+| Testing World | Ball gameplay testing | 89116331161137 |
+
+**Universe ID:** 9939379485
+
 ## Development
 
 ### Prerequisites
@@ -37,19 +48,74 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 npm install
 ```
 
-### Build
-```bash
-npm run build
+### NPM Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run build` | Compile TypeScript |
+| `npm run watch` | Watch mode (TypeScript only) |
+| `npm run watch:lobby` | Watch + serve lobby place |
+| `npm run watch:testing` | Watch + serve testing place |
+| `npm run serve:lobby` | Serve lobby to Rojo |
+| `npm run serve:testing` | Serve testing to Rojo |
+| `npm run build:lobby` | Build lobby .rbxl file |
+| `npm run build:testing` | Build testing .rbxl file |
+| `npm run build:all` | Build all .rbxl files |
+| `npm run deploy:lobby` | Deploy lobby to Roblox |
+| `npm run deploy:testing` | Deploy testing to Roblox |
+| `npm run deploy:all` | Build and deploy all places |
+
+### Project Structure
+
+```
+src/
+├── shared/           # Shared across all places
+│   ├── constants/
+│   │   └── BallConfig.ts
+│   ├── network.ts
+│   └── globals.ts
+├── lobby/            # Lobby place only
+│   ├── client/
+│   │   ├── runtime.client.ts
+│   │   └── controllers/
+│   └── server/
+│       ├── runtime.server.ts
+│       └── services/
+└── game/             # Game worlds only
+    ├── client/
+    │   ├── runtime.client.ts
+    │   ├── network.ts
+    │   └── controllers/
+    └── server/
+        ├── runtime.server.ts
+        ├── network.ts
+        └── services/
 ```
 
-### Serve (Rojo)
-```bash
-npm run serve
-```
+### Rojo Project Files
 
-### Studio Setup
+| File | Purpose |
+|------|---------|
+| `build.project.json` | Used by rbxtsc for compilation (includes all paths) |
+| `lobby.project.json` | Rojo project for lobby place |
+| `testing.project.json` | Rojo project for testing world |
 
-Create the following structure in ReplicatedStorage:
+### Development Workflow
+
+1. Start watch mode for your target place:
+   ```bash
+   npm run watch:lobby
+   # or
+   npm run watch:testing
+   ```
+
+2. Open Roblox Studio and connect the Rojo plugin
+
+3. Play to test
+
+### Studio Setup (Game Worlds)
+
+Ball and trail assets are stored in `assets/rbxm/` and automatically synced via Rojo:
 
 ```
 ReplicatedStorage/

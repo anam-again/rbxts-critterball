@@ -1,7 +1,7 @@
 import { OnStart, Service } from "@flamework/core";
 import { Players, ReplicatedStorage, Workspace } from "@rbxts/services";
 import { BallConfig } from "shared/constants/BallConfig";
-import { ServerEvents } from "server/network";
+import { ServerEvents } from "game/server/network";
 
 @Service()
 export class CritterballService implements OnStart {

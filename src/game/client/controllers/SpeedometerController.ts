@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Players, RunService } from "@rbxts/services";
 import { BallConfig } from "shared/constants/BallConfig";
-import { ClientEvents } from "client/network";
+import { ClientEvents } from "game/client/network";
 
 @Controller()
 export class SpeedometerController implements OnStart {

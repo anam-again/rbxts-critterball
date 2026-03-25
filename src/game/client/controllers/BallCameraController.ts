@@ -1,6 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Players, Workspace } from "@rbxts/services";
-import { ClientEvents } from "client/network";
+import { ClientEvents } from "game/client/network";
 import { BallConfig } from "shared/constants/BallConfig";
 
 @Controller()

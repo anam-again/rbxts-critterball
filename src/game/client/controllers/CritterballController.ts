@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { ContextActionService, Lighting, Players, RunService, Workspace } from "@rbxts/services";
 import { BallConfig } from "shared/constants/BallConfig";
-import { ClientEvents } from "client/network";
+import { ClientEvents } from "game/client/network";
 
 @Controller()
 export class CritterballController implements OnStart {

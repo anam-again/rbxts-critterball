@@ -1,12 +1,15 @@
 {
-  "name": "critterball",
+  "name": "Critterball-Lobby",
   "globIgnorePaths": ["**/package.json", "**/tsconfig.json"],
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
       "$className": "ServerScriptService",
       "TS": {
-        "$path": "out/server"
+        "$className": "Folder",
+        "lobby": {
+          "$path": "out/lobby/server"
+        }
       }
     },
     "ReplicatedStorage": {
@@ -15,12 +18,8 @@
         "$path": "include",
         "node_modules": {
           "$className": "Folder",
-          "@rbxts": {
-            "$path": "node_modules/@rbxts"
-          },
-          "@flamework": {
-            "$path": "node_modules/@flamework"
-          }
+          "@rbxts": { "$path": "node_modules/@rbxts" },
+          "@flamework": { "$path": "node_modules/@flamework" }
         }
       },
       "TS": {
@@ -32,7 +31,10 @@
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
         "TS": {
-          "$path": "out/client"
+          "$className": "Folder",
+          "lobby": {
+            "$path": "out/lobby/client"
+          }
         }
       }
     },

@@ -16,7 +16,10 @@
       "WebSearch",
       "WebFetch(domain:devforum.roblox.com)",
       "Bash(npm search:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx rbxtsc --help:*)",
+      "Bash(ls:*)",
+      "Bash(npm run build:lobby:*)"
     ]
   }
 }
