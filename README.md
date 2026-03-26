@@ -29,10 +29,7 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 
 Critterball uses a multi-place architecture with separate places for different game modes:
 
-| Place | Description | Place ID |
-|-------|-------------|----------|
-| Lobby | Walk-around social hub | 105871392171885 |
-| Testing World | Ball gameplay testing | 89116331161137 |
+Place IDs are defined in `places.json` (single source of truth).
 
 **Universe ID:** 9939379485
 
@@ -52,18 +49,12 @@ npm install
 
 | Script | Description |
 |--------|-------------|
+| `npm run dev <place>` | Start dev server (lobby/testing) |
 | `npm run build` | Compile TypeScript |
-| `npm run watch` | Watch mode (TypeScript only) |
-| `npm run watch:lobby` | Watch + serve lobby place |
-| `npm run watch:testing` | Watch + serve testing place |
-| `npm run serve:lobby` | Serve lobby to Rojo |
-| `npm run serve:testing` | Serve testing to Rojo |
-| `npm run build:lobby` | Build lobby .rbxl file |
-| `npm run build:testing` | Build testing .rbxl file |
-| `npm run build:all` | Build all .rbxl files |
-| `npm run deploy:lobby` | Deploy lobby to Roblox |
-| `npm run deploy:testing` | Deploy testing to Roblox |
-| `npm run deploy:all` | Build and deploy all places |
+| `npm run build:rbxl <place>` | Build .rbxl file (lobby/testing/all) |
+| `npm run deploy <place>` | Deploy to Roblox (lobby/testing/all) |
+| `npm run release` | Full release: build, .rbxl, deploy |
+| `npm run lint` | Run ESLint with auto-fix |
 
 ### Project Structure
 
@@ -102,11 +93,11 @@ src/
 
 ### Development Workflow
 
-1. Start watch mode for your target place:
+1. Start dev server for your target place:
    ```bash
-   npm run watch:lobby
+   npm run dev lobby
    # or
-   npm run watch:testing
+   npm run dev testing
    ```
 
 2. Open Roblox Studio and connect the Rojo plugin
@@ -156,3 +147,110 @@ All gameplay tuning values are in `src/shared/constants/BallConfig.ts`:
 - [roblox-ts](https://roblox-ts.com/) - TypeScript to Luau compiler
 - [Flamework](https://flamework.fireboltofdeath.dev/) - Game framework
 - [Rojo](https://rojo.space/) - Roblox project sync
+
+---
+
+## Deployment Guide
+
+### Prerequisites
+
+1. **Environment Setup**: Copy `template.env` to `.env`:
+   ```bash
+   cp template.env .env
+   ```
+
+2. **Add API Key**: Get an Open Cloud API key from https://create.roblox.com/dashboard/credentials
+   - Add the "universe-places" API system
+   - Grant "Write" permission
+   - Add your experience to allowed experiences
+   - Paste the key in `.env` as `UNIVERSE_PUSH_API_KEY`
+
+3. **Close Roblox Studio**: Ensure Studio is not connected to places you're deploying.
+
+### Release Process
+
+#### Step 1: Make Changes
+
+Develop and test locally:
+```bash
+npm run dev lobby
+```
+
+#### Step 2: Build and Review
+
+Run the build to catch errors:
+```bash
+npm run build
+```
+
+**Expected changes:**
+- `out/` - Compiled Lua (gitignored)
+- `src/shared/constants/PlaceIds.ts` - Auto-generated from `places.json`
+
+#### Step 3: Create .rbxl Files
+
+Build .rbxl files for backup/review:
+```bash
+npm run build:rbxl all
+```
+
+**Expected changes:**
+- `build/Lobby.rbxl` - Compiled lobby
+- `build/Testing.rbxl` - Compiled testing world
+
+#### Step 4: Review with Claude
+
+Before committing, have Claude review:
+```
+Please review my changes. Check for:
+- Security issues
+- Code quality
+- Missing error handling
+- Potential bugs
+```
+
+#### Step 5: Commit
+
+```bash
+git add .
+git commit -m "Description of changes"
+```
+
+**Committed files:**
+- Source code (`src/`)
+- Config (`places.json`, `package.json`)
+- Generated `PlaceIds.ts`
+
+**NOT committed (gitignored):**
+- `out/`, `build/`, `.env`, `node_modules/`
+
+#### Step 6: Deploy to Roblox
+
+Full release (build + .rbxl + deploy):
+```bash
+npm run release
+```
+
+Or deploy individually:
+```bash
+npm run deploy lobby
+npm run deploy testing
+```
+
+#### Step 7: Push to Git
+
+```bash
+git push origin main
+```
+
+### Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| "Server is busy" | Close Studio, wait, retry (auto-retries 3x) |
+| "API Key insufficient scopes" | Add "universe-places:write" permission |
+| "ROBLOSECURITY not found" | Check `.env` exists with valid credentials |
+
+### Updating Place IDs
+
+Edit `places.json`, then run `npm run build` to regenerate `PlaceIds.ts`.

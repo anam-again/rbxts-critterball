@@ -4,18 +4,16 @@
   "description": "A Roblox game where players roll around in a ball - Super Monkey Ball style",
   "main": "index.js",
   "scripts": {
+    "generate": "node scripts/generate-places.js",
+    "prebuild": "npm run generate",
     "build": "rbxtsc --rojo build.project.json",
-    "watch": "rbxtsc -w --rojo build.project.json",
-    "watch:lobby": "concurrently \"rbxtsc -w --rojo build.project.json\" \"rojo serve lobby.project.json\"",
-    "watch:testing": "concurrently \"rbxtsc -w --rojo build.project.json\" \"rojo serve testing.project.json\"",
-    "serve:lobby": "rojo serve lobby.project.json",
-    "serve:testing": "rojo serve testing.project.json",
-    "build:lobby": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build lobby.project.json -o build/Lobby.rbxl",
-    "build:testing": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build testing.project.json -o build/Testing.rbxl",
-    "build:all": "npm run build:lobby && npm run build:testing",
-    "deploy:lobby": "rojo upload lobby.project.json --asset_id 105871392171885",
-    "deploy:testing": "rojo upload testing.project.json --asset_id 89116331161137",
-    "deploy:all": "npm run build && npm run deploy:lobby && npm run deploy:testing",
+    "dev": "node scripts/dev.js",
+    "dev:lobby": "node scripts/dev.js lobby",
+    "dev:testing": "node scripts/dev.js testing",
+    "build:rbxl": "node scripts/build-rbxl.js",
+    "deploy": "node scripts/deploy.js",
+    "deploy:all": "npm run build && node scripts/deploy.js all",
+    "release": "npm run build && node scripts/build-rbxl.js all && node scripts/deploy.js all",
     "lint": "eslint --fix"
   },
   "keywords": [],
@@ -26,6 +24,7 @@
     "@typescript-eslint/eslint-plugin": "^7.1.1",
     "@typescript-eslint/parser": "^7.1.1",
     "concurrently": "^9.2.1",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
@@ -41,6 +40,7 @@
     "@flamework/networking": "^1.3.2",
     "@rbxts/compiler-types": "^2.2.0-types.0",
     "@rbxts/object-utils": "^1.0.4",
-    "@rbxts/services": "^1.5.4"
+    "@rbxts/services": "^1.5.4",
+    "dotenv": "^17.3.1"
   }
 }

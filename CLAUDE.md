@@ -7,14 +7,12 @@ Critterball is a Roblox game built with roblox-ts and Flamework, featuring Super
 - **Language**: TypeScript (roblox-ts)
 - **Framework**: Flamework (services, controllers, networking)
 - **Build**: `npm run build` (rbxtsc with build.project.json)
-- **Serve**: `npm run serve:lobby` or `npm run serve:testing` (Rojo)
+- **Dev**: `npm run dev lobby` or `npm run dev testing` (TypeScript watch + Rojo serve)
 
 ## Multi-Place Universe Architecture
 
-### Roblox IDs
-- **Universe ID:** 9939379485
-- **Lobby Place ID:** 105871392171885
-- **Testing World Place ID:** 89116331161137
+### Place IDs
+Place IDs are defined in `places.json` (single source of truth). Run `npm run build` to regenerate `src/shared/constants/PlaceIds.ts`.
 
 ### Project Files
 - `build.project.json` - Used by rbxtsc for compilation (contains all paths)
@@ -25,68 +23,60 @@ Critterball is a Roblox game built with roblox-ts and Flamework, featuring Super
 
 ```
 critterball/
+├── places.json                    # Place IDs (single source of truth)
+├── scripts/                       # Build & deploy scripts
+│   ├── config.js                  # Reads places.json
+│   ├── deploy.js                  # Deploy to Roblox
+│   ├── build-rbxl.js              # Build .rbxl files
+│   ├── dev.js                     # Development server
+│   └── generate-places.js         # Generates PlaceIds.ts
+│
 ├── src/
-│   ├── shared/                    # → ALL places (constants, network types, utils)
+│   ├── shared/                    # → ALL places
 │   │   ├── constants/
-│   │   │   └── BallConfig.ts
+│   │   │   ├── BallConfig.ts      # Ball physics/effects tuning
+│   │   │   ├── LobbyConfig.ts     # Maps, gamemodes, party settings
+│   │   │   └── PlaceIds.ts        # AUTO-GENERATED from places.json
+│   │   ├── types/
+│   │   │   └── LobbyTypes.ts      # PartyState, PartyMember, etc.
 │   │   ├── network.ts
-│   │   └── globals.ts
+│   │   └── globals.ts             # CollectionService tags
 │   │
 │   ├── lobby/                     # → LOBBY ONLY
-│   │   ├── client/
-│   │   │   ├── runtime.client.ts  # Flamework bootstrap for lobby
-│   │   │   └── controllers/
-│   │   │       └── LobbyController.ts
-│   │   └── server/
-│   │       ├── runtime.server.ts  # Flamework bootstrap for lobby
-│   │       └── services/
-│   │           └── LobbyService.ts
+│   │   ├── shared/
+│   │   │   └── network.ts         # Lobby network events
+│   │   ├── client/controllers/
+│   │   │   ├── LobbyController.ts
+│   │   │   └── QueueUIController.ts
+│   │   └── server/services/
+│   │       ├── LobbyService.ts
+│   │       └── PartyService.ts
 │   │
 │   └── game/                      # → GAME WORLDS ONLY
-│       ├── client/
-│       │   ├── runtime.client.ts  # Flamework bootstrap for game
-│       │   ├── network.ts
-│       │   └── controllers/
-│       │       ├── CritterballController.ts
-│       │       ├── BallCameraController.ts
-│       │       └── SpeedometerController.ts
-│       └── server/
-│           ├── runtime.server.ts  # Flamework bootstrap for game
-│           ├── network.ts
-│           └── services/
-│               └── CritterballService.ts
+│       ├── client/controllers/
+│       │   ├── CritterballController.ts
+│       │   ├── BallCameraController.ts
+│       │   └── SpeedometerController.ts
+│       └── server/services/
+│           └── CritterballService.ts
 │
-├── assets/
-│   └── rbxm/
-│       ├── Balls/
-│       │   └── DefaultBall.rbxm   # → GAME WORLDS ONLY
-│       ├── Trails/
-│       │   └── DefaultTrail.rbxm  # → GAME WORLDS ONLY
-│       └── Maps/
-│           └── TestingMap1.rbxm   # → TESTING WORLD ONLY
-│
+├── assets/rbxm/                   # Roblox assets
+├── build/                         # Generated .rbxl files (gitignored)
 ├── build.project.json             # For rbxtsc compilation
-├── lobby.project.json             # Lobby place (Rojo)
-├── testing.project.json           # Testing world place (Rojo)
-└── package.json                   # Multi-place scripts
+├── lobby.project.json             # Lobby Rojo project
+└── testing.project.json           # Testing world Rojo project
 ```
 
 ## NPM Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `npm run build` | Compile TypeScript (uses build.project.json) |
-| `npm run watch` | Watch mode (TypeScript only) |
-| `npm run watch:lobby` | Watch + serve lobby (combined) |
-| `npm run watch:testing` | Watch + serve testing (combined) |
-| `npm run serve:lobby` | Serve lobby to Rojo |
-| `npm run serve:testing` | Serve testing world to Rojo |
-| `npm run build:lobby` | Build lobby .rbxl file |
-| `npm run build:testing` | Build testing world .rbxl file |
-| `npm run build:all` | Build both .rbxl files |
-| `npm run deploy:lobby` | Upload lobby to Roblox |
-| `npm run deploy:testing` | Upload testing world to Roblox |
-| `npm run deploy:all` | Build and deploy both places |
+| `npm run dev <place>` | Start dev server (lobby/testing) |
+| `npm run build` | Compile TypeScript + generate PlaceIds.ts |
+| `npm run build:rbxl <place>` | Build .rbxl file (lobby/testing/all) |
+| `npm run deploy <place>` | Deploy to Roblox (lobby/testing/all) |
+| `npm run release` | Full release: build + .rbxl + deploy all |
+| `npm run lint` | Run ESLint with auto-fix |
 
 ## Core Systems
 
@@ -131,6 +121,35 @@ critterball/
 - **Trailing Camera**: Subtle lag behind movement direction
 - **Impact Blur**: Brief blur on heavy impacts
 
+### Lobby Queue System
+
+The lobby features a party-based queue system for teleporting players to game worlds together.
+
+#### UI Flow
+1. **Terminal Interaction**: Player clicks ProximityPrompt on QUEUE_TERMINAL tagged part
+2. **Mode Select**: Choose "Host a Party" or "Join a Party"
+3. **Host Party**: Create party, invite friends, select gamemode/map, start countdown
+4. **Browse Parties**: View public parties and join them
+
+#### Party System (PartyService)
+- **Party Creation**: Players can create parties (max 8 members)
+- **Public/Private**: Parties are private by default, leader can toggle public
+- **Invites**: Invite friends (60 second expiry), accept/decline
+- **Leadership**: Transfer leadership, kick members (leader only)
+- **Ready System**: Members mark ready, leader starts countdown when all ready
+- **Countdown**: 4-second countdown with cancel option, then teleport
+
+#### Key Components
+- `QueueUIController.ts`: Programmatic UI creation, 3 screens (mode_select, host_party, browse_parties)
+- `PartyService.ts`: Server-side party management, invite system, teleportation
+- `LobbyController.ts`: Terminal detection via CollectionService, ProximityPrompt setup
+
+#### Studio Testing
+TeleportService doesn't work in Roblox Studio. The system detects `RunService.IsStudio()` and simulates teleportation by:
+- Printing teleport info to console
+- Sending a queueError message to party members describing the simulated teleport
+- Cancelling the countdown (party remains intact for further testing)
+
 ## Key Configuration (BallConfig.ts)
 
 All tuning values are in `src/shared/constants/BallConfig.ts`. Key sections:
@@ -141,6 +160,15 @@ All tuning values are in `src/shared/constants/BallConfig.ts`. Key sections:
 - **Effects**: Particle counts, blur intensity, trail dynamics
 - **Templates**: Default ball and trail names
 
+## Key Configuration (LobbyConfig.ts)
+
+Lobby settings in `src/shared/constants/LobbyConfig.ts`:
+
+- **PLACE_IDS**: Imported from auto-generated `PlaceIds.ts` (edit `places.json` to change)
+- **MAPS**: Map configurations (id, name, description, placeId)
+- **GAMEMODES**: Gamemode configurations (id, name, description, availableMaps)
+- **PARTY_CONFIG**: Max size (8), invite expiry (60s), countdown duration (4s)
+
 ## Network Events
 
 ```typescript
@@ -149,6 +177,29 @@ ServerEvents:
 
 ClientEvents:
   - ballReady(ball: Model): void  // Server confirms ball ready
+```
+
+### Lobby Network Events (lobby/shared/network.ts)
+
+```typescript
+LobbyServerEvents (Client → Server):
+  - createParty() / leaveParty()
+  - inviteFriend(userId) / acceptInvite(inviteId) / declineInvite(inviteId)
+  - kickMember(userId) / transferLeadership(userId)
+  - setPartyPublic(isPublic)
+  - requestPublicParties() / joinParty(partyId)
+  - selectMap(mapId) / selectGamemode(gamemodeId)
+  - setReady(ready) / startCountdown() / cancelCountdown()
+  - requestFriendsList()
+
+LobbyClientEvents (Server → Client):
+  - partyUpdated(state | undefined)
+  - inviteReceived(invite) / inviteExpired(inviteId)
+  - friendsListUpdated(friends[])
+  - publicPartiesUpdated(parties[])
+  - countdownStarted(endTime) / countdownCancelled()
+  - teleportStarting()
+  - queueError(message)
 ```
 
 ## Common Tasks
@@ -174,14 +225,36 @@ ClientEvents:
 2. Must contain a Part named "Sphere"
 3. Update `DEFAULT_BALL` in BallConfig or implement selection
 
+### Adding New Maps
+1. Add map entry to `MAPS` in `src/shared/constants/LobbyConfig.ts`
+2. Include id, name, description, and target placeId
+3. Add map id to relevant gamemode's `availableMaps` array
+
+### Adding New Gamemodes
+1. Add gamemode entry to `GAMEMODES` in `src/shared/constants/LobbyConfig.ts`
+2. Include id, name, description, and array of compatible map IDs
+
+### Adding Queue Terminals
+1. Add a Part to the lobby with the `QUEUE_TERMINAL` tag (via CollectionService or Studio)
+2. LobbyController automatically creates ProximityPrompt on tagged parts
+3. Interacting opens the queue UI
+
 ## Validation
 The server validates ball and trail templates on startup with detailed error messages if misconfigured.
 
 ## Development Workflow
 
-1. **Start development**: `npm run watch:lobby` or `npm run watch:testing` (runs both TypeScript watch and Rojo serve)
+1. **Start development**: `npm run dev lobby` or `npm run dev testing`
 2. **Open Studio**: Connect Rojo plugin to localhost
 3. **Test**: Play in Studio
-4. **Deploy**: `npm run deploy:all` when ready
+4. **Deploy**: `npm run release` when ready (builds, creates .rbxl, deploys)
 
-**Note**: The `watch:lobby` and `watch:testing` commands use `concurrently` to run both the TypeScript compiler and Rojo server simultaneously.
+### Testing Lobby Queue System
+- The queue system works in Studio except for actual teleportation
+- When testing in Studio, teleports are simulated with console output and a notification
+- To test full teleport flow, deploy both places and test in the live game
+
+### Deployment Requirements
+- Close Roblox Studio before deploying
+- Requires `UNIVERSE_PUSH_API_KEY` in `.env` (get from create.roblox.com/credentials)
+- See README.md for full deployment guide

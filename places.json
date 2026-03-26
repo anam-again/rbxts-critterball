@@ -1,0 +1,15 @@
+{
+	"universeId": "9939379485",
+	"places": {
+		"lobby": {
+			"assetId": "89116331161137",
+			"project": "lobby.project.json",
+			"output": "build/Lobby.rbxl"
+		},
+		"testing": {
+			"assetId": "87179476377857",
+			"project": "testing.project.json",
+			"output": "build/Testing.rbxl"
+		}
+	}
+}

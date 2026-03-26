@@ -24,6 +24,9 @@
       },
       "TS": {
         "$path": "out/shared"
+      },
+      "LobbyShared": {
+        "$path": "out/lobby/shared"
       }
     },
     "StarterPlayer": {
@@ -42,6 +45,9 @@
       "$className": "Workspace",
       "$properties": {
         "FilteringEnabled": true
+      },
+      "LobbyMap": {
+        "$path": "assets/rbxm/Maps/LobbyMap.rbxm"
       }
     },
     "HttpService": {

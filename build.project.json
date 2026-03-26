@@ -28,6 +28,9 @@
       "TS": {
         "$path": "out/shared"
       },
+      "LobbyShared": {
+        "$path": "out/lobby/shared"
+      },
       "Balls": {
         "$path": "assets/rbxm/Balls"
       },
