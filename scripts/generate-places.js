@@ -12,7 +12,7 @@ export const UNIVERSE_ID = ${places.universeId};
 
 export const PLACE_IDS = {
 	LOBBY: ${places.places.lobby.assetId},
-	TESTING_WORLD: ${places.places.testing.assetId},
+	SPACELOOP: ${places.places.spaceloop.assetId},
 } as const;
 `;
 

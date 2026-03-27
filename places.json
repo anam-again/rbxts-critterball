@@ -6,10 +6,10 @@
 			"project": "lobby.project.json",
 			"output": "build/Lobby.rbxl"
 		},
-		"testing": {
+		"spaceloop": {
 			"assetId": "87179476377857",
-			"project": "testing.project.json",
-			"output": "build/Testing.rbxl"
+			"project": "spaceloop.project.json",
+			"output": "build/Spaceloop.rbxl"
 		}
 	}
 }

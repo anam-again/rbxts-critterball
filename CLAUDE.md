@@ -7,7 +7,7 @@ Critterball is a Roblox game built with roblox-ts and Flamework, featuring Super
 - **Language**: TypeScript (roblox-ts)
 - **Framework**: Flamework (services, controllers, networking)
 - **Build**: `npm run build` (rbxtsc with build.project.json)
-- **Dev**: `npm run dev lobby` or `npm run dev testing` (TypeScript watch + Rojo serve)
+- **Dev**: `npm run dev lobby` or `npm run dev spaceloop` (TypeScript watch + Rojo serve)
 
 ## Multi-Place Universe Architecture
 
@@ -17,7 +17,7 @@ Place IDs are defined in `places.json` (single source of truth). Run `npm run bu
 ### Project Files
 - `build.project.json` - Used by rbxtsc for compilation (contains all paths)
 - `lobby.project.json` - Rojo project for lobby place (no ball assets)
-- `testing.project.json` - Rojo project for testing world (has ball assets, map)
+- `spaceloop.project.json` - Rojo project for Spaceloop game world (has ball assets, map)
 
 ### Project Structure
 
@@ -64,14 +64,14 @@ critterball/
 ├── build/                         # Generated .rbxl files (gitignored)
 ├── build.project.json             # For rbxtsc compilation
 ├── lobby.project.json             # Lobby Rojo project
-└── testing.project.json           # Testing world Rojo project
+└── spaceloop.project.json         # Spaceloop game world Rojo project
 ```
 
 ## NPM Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `npm run dev <place>` | Start dev server (lobby/testing) |
+| `npm run dev <place>` | Start dev server (lobby/spaceloop) |
 | `npm run build` | Compile TypeScript + generate PlaceIds.ts |
 | `npm run build:rbxl <place>` | Build .rbxl file (lobby/testing/all) |
 | `npm run deploy <place>` | Deploy to Roblox (lobby/testing/all) |
@@ -244,7 +244,7 @@ The server validates ball and trail templates on startup with detailed error mes
 
 ## Development Workflow
 
-1. **Start development**: `npm run dev lobby` or `npm run dev testing`
+1. **Start development**: `npm run dev lobby` or `npm run dev spaceloop`
 2. **Open Studio**: Connect Rojo plugin to localhost
 3. **Test**: Play in Studio
 4. **Deploy**: `npm run release` when ready (builds, creates .rbxl, deploys)

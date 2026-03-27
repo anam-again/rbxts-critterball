@@ -9,7 +9,7 @@
     "build": "rbxtsc --rojo build.project.json",
     "dev": "node scripts/dev.js",
     "dev:lobby": "node scripts/dev.js lobby",
-    "dev:testing": "node scripts/dev.js testing",
+    "dev:spaceloop": "node scripts/dev.js spaceloop",
     "build:rbxl": "node scripts/build-rbxl.js",
     "deploy": "node scripts/deploy.js",
     "deploy:all": "npm run build && node scripts/deploy.js all",

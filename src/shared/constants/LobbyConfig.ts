@@ -5,12 +5,12 @@ export { PLACE_IDS, UNIVERSE_ID };
 // Map configurations
 export const MAPS: ReadonlyMap<string, MapConfig> = new Map([
 	[
-		"TestingMap1",
+		"Spaceloop",
 		{
-			id: "TestingMap1",
-			name: "Testing Map 1",
-			description: "Basic testing environment",
-			placeId: PLACE_IDS.TESTING_WORLD,
+			id: "Spaceloop",
+			name: "Spaceloop",
+			description: "A looping space station track",
+			placeId: PLACE_IDS.SPACELOOP,
 		},
 	],
 ]);
@@ -23,7 +23,7 @@ export const GAMEMODES: ReadonlyMap<string, GamemodeConfig> = new Map([
 			id: "Sandbox",
 			name: "Sandbox",
 			description: "Free play - roll around and explore!",
-			availableMaps: ["TestingMap1"],
+			availableMaps: ["Spaceloop"],
 		},
 	],
 ]);

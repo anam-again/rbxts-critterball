@@ -1,5 +1,5 @@
 {
-  "name": "Critterball-Testing",
+  "name": "Critterball-Spaceloop",
   "globIgnorePaths": ["**/package.json", "**/tsconfig.json"],
   "tree": {
     "$className": "DataModel",
@@ -50,7 +50,7 @@
         "FilteringEnabled": true
       },
       "Map": {
-        "$path": "assets/rbxm/Maps/TestingMap1.rbxm"
+        "$path": "assets/rbxm/Maps/Spaceloop.rbxm"
       }
     },
     "HttpService": {
