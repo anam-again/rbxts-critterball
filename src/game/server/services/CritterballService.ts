@@ -1,12 +1,14 @@
-import { OnStart, Service } from "@flamework/core";
+import { OnStart, Service, Dependency } from "@flamework/core";
 import { Players, ReplicatedStorage, Workspace } from "@rbxts/services";
 import { BallConfig } from "shared/constants/BallConfig";
 import { ServerEvents } from "game/server/network";
+import { RaceService } from "./RaceService";
 
 @Service()
 export class CritterballService implements OnStart {
 	private ballsFolder = ReplicatedStorage.WaitForChild("Balls") as Folder;
 	private trailsFolder = ReplicatedStorage.WaitForChild("Trails") as Folder;
+	private raceService = Dependency<RaceService>();
 
 	onStart(): void {
 		print("Critterball Server Started!");
@@ -14,6 +16,11 @@ export class CritterballService implements OnStart {
 		// Validate templates on startup
 		this.validateBallTemplate(BallConfig.DEFAULT_BALL);
 		this.validateTrailTemplate(BallConfig.DEFAULT_TRAIL);
+
+		// Register respawn callback with RaceService
+		this.raceService.setRespawnCallback((player, position, lookVector) => {
+			this.respawnBallForPlayer(player, position, lookVector);
+		});
 
 		// Handle player joining
 		Players.PlayerAdded.Connect((player) => this.onPlayerAdded(player));
@@ -189,9 +196,14 @@ export class CritterballService implements OnStart {
 			return;
 		}
 
-		// Position ball at character location
-		const spawnPosition = humanoidRootPart.Position.add(new Vector3(0, 3, 0));
-		ball.PivotTo(new CFrame(spawnPosition));
+		// Get spawn position from RaceService
+		const spawnData = this.raceService.getSpawnDataForPlayer(player);
+		const spawnPosition = spawnData.position.add(new Vector3(0, 3, 0));
+		const spawnCFrame = CFrame.lookAt(spawnPosition, spawnPosition.add(spawnData.lookVector));
+		ball.PivotTo(spawnCFrame);
+
+		// Move character to spawn position (before attaching to ball)
+		character.PivotTo(spawnCFrame);
 
 		// Set physics properties
 		sphere.CustomPhysicalProperties = new PhysicalProperties(
@@ -204,6 +216,10 @@ export class CritterballService implements OnStart {
 
 		// Parent ball to workspace
 		ball.Parent = Workspace;
+
+		// Zero velocity to ensure clean start
+		sphere.AssemblyLinearVelocity = Vector3.zero;
+		sphere.AssemblyAngularVelocity = Vector3.zero;
 
 		// Add reduced gravity (VectorForce to counteract some gravity)
 		this.applyReducedGravity(sphere);
@@ -394,5 +410,33 @@ export class CritterballService implements OnStart {
 				trail.Parent = trailAnchor;
 			}
 		}
+	}
+
+	// ==================== RESPAWN ====================
+
+	public respawnBallForPlayer(player: Player, position: Vector3, lookVector: Vector3): void {
+		const ball = Workspace.FindFirstChild(`Ball_${player.UserId}`) as Model | undefined;
+		if (!ball) return;
+
+		const sphere = ball.FindFirstChild("Sphere") as BasePart | undefined;
+		if (!sphere) return;
+
+		const character = player.Character;
+
+		// Zero velocity
+		sphere.AssemblyLinearVelocity = Vector3.zero;
+		sphere.AssemblyAngularVelocity = Vector3.zero;
+
+		// Teleport ball (add slight height offset to prevent ground clipping)
+		const respawnPosition = position.add(new Vector3(0, 3, 0));
+		const respawnCFrame = CFrame.lookAt(respawnPosition, respawnPosition.add(lookVector));
+		ball.PivotTo(respawnCFrame);
+
+		// Also move character to respawn position
+		if (character) {
+			character.PivotTo(respawnCFrame);
+		}
+
+		print(`[CritterballService] Respawned ball for ${player.Name}`);
 	}
 }

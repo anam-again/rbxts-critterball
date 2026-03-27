@@ -36,9 +36,11 @@ critterball/
 │   │   ├── constants/
 │   │   │   ├── BallConfig.ts      # Ball physics/effects tuning
 │   │   │   ├── LobbyConfig.ts     # Maps, gamemodes, party settings
+│   │   │   ├── RaceConfig.ts      # Race laps, HUD styling, timers
 │   │   │   └── PlaceIds.ts        # AUTO-GENERATED from places.json
 │   │   ├── types/
-│   │   │   └── LobbyTypes.ts      # PartyState, PartyMember, etc.
+│   │   │   ├── LobbyTypes.ts      # PartyState, PartyMember, etc.
+│   │   │   └── RaceTypes.ts       # PlayerRaceState, SpawnData
 │   │   ├── network.ts
 │   │   └── globals.ts             # CollectionService tags
 │   │
@@ -53,12 +55,17 @@ critterball/
 │   │       └── PartyService.ts
 │   │
 │   └── game/                      # → GAME WORLDS ONLY
+│       ├── shared/
+│       │   └── network.ts         # Race network events
 │       ├── client/controllers/
 │       │   ├── CritterballController.ts
 │       │   ├── BallCameraController.ts
-│       │   └── SpeedometerController.ts
+│       │   ├── SpeedometerController.ts
+│       │   ├── CheckpointController.ts  # Checkpoint detection, death barrier
+│       │   └── RaceUIController.ts      # Race HUD, finish screen
 │       └── server/services/
-│           └── CritterballService.ts
+│           ├── CritterballService.ts
+│           └── RaceService.ts           # Checkpoint validation, respawning
 │
 ├── assets/rbxm/                   # Roblox assets
 ├── build/                         # Generated .rbxl files (gitignored)
@@ -121,6 +128,34 @@ critterball/
 - **Trailing Camera**: Subtle lag behind movement direction
 - **Impact Blur**: Brief blur on heavy impacts
 
+### Racing System (Game Worlds)
+
+Server-authoritative checkpoint-based racing with automatic lap tracking.
+
+#### Components
+- **RaceService** (server): Checkpoint validation, player state, respawn handling
+- **CheckpointController** (client): Checkpoint touch detection, death barrier monitoring
+- **RaceUIController** (client): Race HUD (timer, lap, checkpoint), finish screen overlay
+
+#### Flow
+1. Player spawns at checkpoint 0's spawn point
+2. Client detects checkpoint touch via `Touched` event, fires to server
+3. Server validates sequential order, updates state, fires update to client
+4. On lap completion (return to checkpoint 0), lap counter increments
+5. On race completion (all laps done), finish screen shows
+
+#### Death Barrier
+- Client monitors ball Y position each frame
+- When below `respawnBarrierY`, client zeros velocity and requests respawn
+- Server teleports ball to last checkpoint's spawn point
+- Client zeros velocity again on respawn completion (client owns physics)
+
+#### Key Insight: Network Ownership
+The ball's physics are owned by the client (`SetNetworkOwner(player)`). This means:
+- Server can't directly zero velocity (changes get overwritten)
+- Client must zero velocity when respawning
+- RigidConstraint between character and ball requires both to be teleported together
+
 ### Lobby Queue System
 
 The lobby features a party-based queue system for teleporting players to game worlds together.
@@ -160,6 +195,15 @@ All tuning values are in `src/shared/constants/BallConfig.ts`. Key sections:
 - **Effects**: Particle counts, blur intensity, trail dynamics
 - **Templates**: Default ball and trail names
 
+## Key Configuration (RaceConfig.ts)
+
+Race settings in `src/shared/constants/RaceConfig.ts`:
+
+- **TOTAL_LAPS**: Number of laps per race (default: 3)
+- **DEFAULT_RESPAWN_BARRIER_Y**: Default Y position for death barrier (default: -400)
+- **HUD**: Positioning, padding, font sizes, colors for race UI
+- **FINISH_SCREEN**: Overlay transparency, title/time colors and sizes
+
 ## Key Configuration (LobbyConfig.ts)
 
 Lobby settings in `src/shared/constants/LobbyConfig.ts`:
@@ -177,6 +221,19 @@ ServerEvents:
 
 ClientEvents:
   - ballReady(ball: Model): void  // Server confirms ball ready
+```
+
+### Race Network Events (game/shared/network.ts)
+
+```typescript
+RaceServerEvents (Client → Server):
+  - checkpointCrossed(checkpointNumber): void  // Client touched checkpoint
+  - requestRespawn(): void                     // Client fell below death barrier
+
+RaceClientEvents (Server → Client):
+  - raceStateUpdated(state: PlayerRaceState): void  // Full state sync
+  - respawnCompleted(): void                        // Respawn finished
+  - raceStarted(startTime: number): void            // Race timer started
 ```
 
 ### Lobby Network Events (lobby/shared/network.ts)
@@ -238,6 +295,30 @@ LobbyClientEvents (Server → Client):
 1. Add a Part to the lobby with the `QUEUE_TERMINAL` tag (via CollectionService or Studio)
 2. LobbyController automatically creates ProximityPrompt on tagged parts
 3. Interacting opens the queue UI
+
+### Setting Up Race Tracks
+1. Create a Folder in Workspace and tag it with `RaceCheckpoints` (via CollectionService)
+2. Add Part children to the folder:
+   - Set `CheckpointNumber` attribute (number): 0 = start/finish, 1, 2, 3... for sequence
+   - Set `CanCollide = false`, `CanTouch = true`
+3. Optionally add SpawnPoint children under checkpoints:
+   - Name them `SpawnPoint1`, `SpawnPoint2`, etc.
+   - These define where players spawn/respawn at that checkpoint
+   - If no SpawnPoints, uses checkpoint's CFrame as fallback
+4. Set death barrier Y:
+   - Add `RespawnBarrierY` attribute (number) to `Workspace.Map` folder
+   - Players falling below this Y position respawn at last checkpoint
+
+```
+Workspace/
+├── Map/                        (Folder, optional RespawnBarrierY attribute)
+└── RaceCheckpoints/            (Folder, tagged "RaceCheckpoints")
+    ├── Checkpoint0             (Part, CheckpointNumber=0)
+    │   ├── SpawnPoint1         (Part)
+    │   └── SpawnPoint2         (Part)
+    ├── Checkpoint1             (Part, CheckpointNumber=1)
+    └── Checkpoint2             (Part, CheckpointNumber=2)
+```
 
 ## Validation
 The server validates ball and trail templates on startup with detailed error messages if misconfigured.

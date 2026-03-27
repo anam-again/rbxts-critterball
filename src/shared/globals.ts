@@ -5,6 +5,7 @@ export const TAGS = {
 	SPEED_BOOST_ZONE: "SpeedBoostZone",
 	BOUNCER: "Bouncer",
 	SPEED_POWERUP: "SpeedPowerup",
+	RACE_CHECKPOINTS: "RaceCheckpoints",
 } as const;
 
 // Attribute names for speed boost zones

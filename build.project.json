@@ -31,6 +31,9 @@
       "LobbyShared": {
         "$path": "out/lobby/shared"
       },
+      "GameShared": {
+        "$path": "out/game/shared"
+      },
       "Balls": {
         "$path": "assets/rbxm/Balls"
       },

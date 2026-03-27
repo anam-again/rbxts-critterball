@@ -25,6 +25,13 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - Character becomes massless inside ball
 - Customizable friction and elasticity
 
+### Racing System
+- **Checkpoint-based racing**: Server-authoritative checkpoint validation
+- **3-lap races**: Configurable lap count with automatic lap tracking
+- **Death barrier**: Fall below the barrier to respawn at last checkpoint
+- **Race HUD**: Live timer, lap counter, and checkpoint progress
+- **Finish screen**: Overlay with final time on race completion
+
 ## Multi-Place Universe
 
 Critterball uses a multi-place architecture with separate places for different game modes:
@@ -89,7 +96,7 @@ src/
 |------|---------|
 | `build.project.json` | Used by rbxtsc for compilation (includes all paths) |
 | `lobby.project.json` | Rojo project for lobby place |
-| `testing.project.json` | Rojo project for testing world |
+| `spaceloop.project.json` | Rojo project for Spaceloop game world |
 
 ### Development Workflow
 
@@ -97,7 +104,7 @@ src/
    ```bash
    npm run dev lobby
    # or
-   npm run dev testing
+   npm run dev spaceloop
    ```
 
 2. Open Roblox Studio and connect the Rojo plugin
@@ -118,6 +125,28 @@ ReplicatedStorage/
         ├── TopAttachment      (Attachment)
         ├── BottomAttachment   (Attachment)
         └── Trail              (Trail)
+```
+
+### Race Track Setup (Game Worlds)
+
+1. **Create checkpoints folder**: Create a Folder in Workspace and tag it with `RaceCheckpoints` via CollectionService
+
+2. **Add checkpoints**: Add Part children to the folder with:
+   - `CheckpointNumber` attribute (number): 0 = start/finish, 1, 2, 3... for subsequent checkpoints
+   - `CanCollide = false`, `CanTouch = true`
+   - Optional: Add child Parts named `SpawnPoint1`, `SpawnPoint2`, etc. for spawn positions
+
+3. **Set death barrier**: Add `RespawnBarrierY` attribute (number) to the `Workspace.Map` folder
+
+```
+Workspace/
+├── Map/                        (Folder, optional RespawnBarrierY attribute)
+└── RaceCheckpoints/            (Folder, tagged "RaceCheckpoints")
+    ├── Checkpoint0             (Part, CheckpointNumber=0)
+    │   ├── SpawnPoint1         (Part)
+    │   └── SpawnPoint2         (Part)
+    ├── Checkpoint1             (Part, CheckpointNumber=1)
+    └── Checkpoint2             (Part, CheckpointNumber=2)
 ```
 
 ## Controls
@@ -141,6 +170,13 @@ All gameplay tuning values are in `src/shared/constants/BallConfig.ts`:
 - Trail appearance
 - Particle effects
 - Camera effects (FOV, shake, blur)
+
+Race settings are in `src/shared/constants/RaceConfig.ts`:
+
+- Total laps per race
+- Default respawn barrier Y position
+- HUD positioning and styling
+- Finish screen appearance
 
 ## Tech Stack
 
@@ -196,7 +232,7 @@ npm run build:rbxl all
 
 **Expected changes:**
 - `build/Lobby.rbxl` - Compiled lobby
-- `build/Testing.rbxl` - Compiled testing world
+- `build/Spaceloop.rbxl` - Compiled Spaceloop game world
 
 #### Step 4: Review with Claude
 
@@ -234,7 +270,7 @@ npm run release
 Or deploy individually:
 ```bash
 npm run deploy lobby
-npm run deploy testing
+npm run deploy spaceloop
 ```
 
 #### Step 7: Push to Git

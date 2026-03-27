@@ -25,6 +25,9 @@
       "TS": {
         "$path": "out/shared"
       },
+      "GameShared": {
+        "$path": "out/game/shared"
+      },
       "Balls": {
         "$path": "assets/rbxm/Balls"
       },
