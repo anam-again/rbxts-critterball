@@ -1,3 +1,5 @@
+export type RaceGameState = "waiting" | "starting" | "countdown" | "racing";
+
 export interface PlayerRaceState {
 	currentCheckpoint: number;
 	totalCheckpoints: number;
@@ -7,6 +9,7 @@ export interface PlayerRaceState {
 	lapStartTime: number;
 	finishTime?: number;
 	isFinished: boolean;
+	gameState: RaceGameState;
 }
 
 export interface SpawnData {

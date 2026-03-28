@@ -51,6 +51,16 @@ export const BallConfig = {
 	IMPACT_BLUR_SIZE_MAX: 3, // Max blur size on heavy impact
 	IMPACT_BLUR_DECAY_RATE: 80, // How fast blur fades
 
+	// Speed display multiplier (shown speed = actual speed * this)
+	SPEED_DISPLAY_MULTIPLIER: 2.2,
+
+	// Saturation boost at high speeds (uses shown/display speed)
+	SATURATION_SPEED_MIN: 500, // Shown speed to start saturation boost
+	SATURATION_SPEED_MAX: 1000, // Shown speed for max saturation boost
+	SATURATION_MIN: 0, // No saturation boost at low speeds
+	SATURATION_MAX: 1.0, // Max saturation boost (ColorCorrection Saturation range is -1 to 1)
+	SATURATION_LERP_SPEED: 5, // How fast saturation changes
+
 	// Screen shake - extended for extreme speeds (500+)
 	SHAKE_IMPACT_INTENSITY: 3.0, // Max shake intensity from impacts (doubled)
 	SHAKE_IMPACT_VELOCITY_MIN: 20, // Min velocity change to trigger shake (lowered for more frequent shakes)

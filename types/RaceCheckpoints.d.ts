@@ -1,11 +1,13 @@
-// Checkpoint part with CheckpointNumber attribute (0, 1, 2, ...)
-// Contains SpawnPoint children underneath
-type Checkpoint = Part & {
-	// CheckpointNumber attribute defines the order (0 = start/finish)
-	// SpawnPoint1, SpawnPoint2, etc. children for spawn positions
+// Checkpoint folder - name must end with a number (e.g., "Checkpoint0", "CP1")
+// Contains a Checkpoint part for detection and SpawnPoint parts for spawn positions
+type CheckpointFolder = Folder & {
+	// Checkpoint number is parsed from folder name (e.g., "Checkpoint0" -> 0)
+	// Children:
+	//   - Checkpoint (Part): The trigger zone for detection
+	//   - SpawnPoint1, SpawnPoint2, etc. (Parts): Spawn positions
 };
 
-// Folder tagged with RaceCheckpoints containing Checkpoint children
+// Folder tagged with RaceCheckpoints containing CheckpointFolder children
 type RaceCheckpointsFolder = Folder & {
-	// Contains Checkpoint children
+	// Contains CheckpointFolder children
 };

@@ -2,7 +2,7 @@ const { execSync } = require("child_process");
 require("dotenv").config();
 const { UNIVERSE_ID, PLACES } = require("./config");
 
-const target = process.argv[2]; // "lobby", "testing", or "all"
+const target = process.argv[2]; // "lobby", "spaceloop", or "all"
 
 // Prefer API key (Open Cloud) over cookie
 const useApiKey = !!process.env.UNIVERSE_PUSH_API_KEY;
@@ -43,7 +43,7 @@ async function deploy(name, retries = 3) {
 		} catch (err) {
 			if (attempt < retries) {
 				const delay = attempt * 10; // 10s, 20s, 30s...
-				console.log(`Attempt ${attempt} failed, retrying in ${delay} seconds...`);
+				console.log(`Attempt ${attempt} failed, retrying in ${delay} seconds... (do you have the map open in Studio?)`);
 				await sleep(delay * 1000);
 			} else {
 				throw err;
@@ -55,11 +55,11 @@ async function deploy(name, retries = 3) {
 async function main() {
 	if (target === "all") {
 		await deploy("lobby");
-		await deploy("testing");
+		await deploy("spaceloop");
 	} else if (target) {
 		await deploy(target);
 	} else {
-		console.error("Usage: node scripts/deploy.js <lobby|testing|all>");
+		console.error("Usage: node scripts/deploy.js <lobby|spaceloop|all>");
 		process.exit(1);
 	}
 }

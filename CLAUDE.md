@@ -40,7 +40,8 @@ critterball/
 │   │   │   └── PlaceIds.ts        # AUTO-GENERATED from places.json
 │   │   ├── types/
 │   │   │   ├── LobbyTypes.ts      # PartyState, PartyMember, etc.
-│   │   │   └── RaceTypes.ts       # PlayerRaceState, SpawnData
+│   │   │   ├── RaceTypes.ts       # PlayerRaceState, SpawnData
+│   │   │   └── GameTypes.ts       # GamemodeId, TeleportData
 │   │   ├── network.ts
 │   │   └── globals.ts             # CollectionService tags
 │   │
@@ -56,16 +57,19 @@ critterball/
 │   │
 │   └── game/                      # → GAME WORLDS ONLY
 │       ├── shared/
-│       │   └── network.ts         # Race network events
+│       │   └── network.ts         # Race + Game network events
 │       ├── client/controllers/
 │       │   ├── CritterballController.ts
 │       │   ├── BallCameraController.ts
 │       │   ├── SpeedometerController.ts
 │       │   ├── CheckpointController.ts  # Checkpoint detection, death barrier
-│       │   └── RaceUIController.ts      # Race HUD, finish screen
+│       │   ├── RaceUIController.ts      # Race HUD, finish screen
+│       │   ├── GameModeController.ts    # Client gamemode state
+│       │   └── GameMenuController.ts    # In-game menu, return to lobby
 │       └── server/services/
 │           ├── CritterballService.ts
-│           └── RaceService.ts           # Checkpoint validation, respawning
+│           ├── RaceService.ts           # Checkpoint validation, respawning
+│           └── GameModeService.ts       # Server gamemode, teleport data
 │
 ├── assets/rbxm/                   # Roblox assets
 ├── build/                         # Generated .rbxl files (gitignored)
@@ -80,8 +84,8 @@ critterball/
 |--------|---------|
 | `npm run dev <place>` | Start dev server (lobby/spaceloop) |
 | `npm run build` | Compile TypeScript + generate PlaceIds.ts |
-| `npm run build:rbxl <place>` | Build .rbxl file (lobby/testing/all) |
-| `npm run deploy <place>` | Deploy to Roblox (lobby/testing/all) |
+| `npm run build:rbxl <place>` | Build .rbxl file (lobby/spaceloop/all) |
+| `npm run deploy <place>` | Deploy to Roblox (lobby/spaceloop/all) |
 | `npm run release` | Full release: build + .rbxl + deploy all |
 | `npm run lint` | Run ESLint with auto-fix |
 
@@ -133,11 +137,43 @@ critterball/
 Server-authoritative checkpoint-based racing with automatic lap tracking.
 
 #### Components
-- **RaceService** (server): Checkpoint validation, player state, respawn handling
+- **RaceService** (server): Checkpoint validation, player state, respawn handling, race orchestration
 - **CheckpointController** (client): Checkpoint touch detection, death barrier monitoring
-- **RaceUIController** (client): Race HUD (timer, lap, checkpoint), finish screen overlay
+- **RaceUIController** (client): Race HUD (timer, lap, checkpoint), countdown, finish screen overlay
+- **BallCameraController** (client): Showcase camera during waiting, switches to player camera on countdown
 
-#### Flow
+#### Race Start Sequence
+
+The race uses a pre-race sequence with showcase camera, status messages, and countdown:
+
+**Game States:**
+```
+WAITING → STARTING → COUNTDOWN → RACING
+```
+
+**Flow:**
+1. Players spawn with balls frozen (Anchored = true)
+2. Showcase camera moves between waypoints, "Waiting for players" message shows
+3. Server waits for all players to load (min 10 seconds, max 30 seconds timeout)
+4. Once all players load, "Waiting for players" hides (showcase continues until min time)
+5. Server transitions to STARTING state, "Race about to start" shows for 5 seconds
+6. Server transitions to COUNTDOWN state, camera smoothly transitions to player view (2 seconds)
+7. 5-4-3-2-1-Race! countdown plays
+8. On RACING state, balls unfreeze, timers start, input enabled
+
+**Camera Modes:**
+- **showcase**: Moves between waypoints during waiting/starting phases
+- **transitioning**: Smoothly moves from showcase position to behind the ball (2 seconds, ease-out cubic)
+- **player**: Standard Roblox follow camera on the ball
+
+**Showcase Camera Waypoints:**
+- Create a Folder in Workspace named `ShowcaseCameraWaypoints`
+- Tag the folder with `ShowcaseCameraWaypoints` (via CollectionService)
+- Add Part children for each waypoint (e.g., `Waypoint1`, `Waypoint2`)
+- Part rotation determines camera look direction (uses LookVector)
+- Set parts: `Anchored = true`, `Transparency = 1`, `CanCollide = false`
+
+#### Checkpoint Flow
 1. Player spawns at checkpoint 0's spawn point
 2. Client detects checkpoint touch via `Touched` event, fires to server
 3. Server validates sequential order, updates state, fires update to client
@@ -155,6 +191,71 @@ The ball's physics are owned by the client (`SetNetworkOwner(player)`). This mea
 - Server can't directly zero velocity (changes get overwritten)
 - Client must zero velocity when respawning
 - RigidConstraint between character and ball requires both to be teleported together
+
+### Gamemode System
+
+The game supports multiple gamemodes selected in the lobby and passed via teleport data.
+
+#### Available Gamemodes
+- **Race**: Full race experience with countdown, showcase camera, timers, laps, and checkpoints
+- **Sandbox**: Free play mode - immediate movement, no race UI, speedometer only
+
+#### Gamemode Flow
+```
+Lobby                                  Game Server
+  │                                        │
+  ├─ Select Gamemode (Race/Sandbox) ──────►│
+  ├─ Select Map (Spaceloop) ──────────────►│
+  ├─ Start Countdown ─────────────────────►│
+  │                                        │
+  ├─ TeleportAsync with TeleportData ─────►│
+  │   { gamemodeId: "race" | "sandbox" }   │
+  │                                        │
+  │                                        ├─ GameModeService reads TeleportData
+  │                                        ├─ Fires gamemodeReady to clients
+  │                                        ├─ Conditionally enables race features
+  │                                        │
+```
+
+#### Mode Differences
+| Feature | Race | Sandbox |
+|---------|------|---------|
+| Showcase camera | Yes | No |
+| Countdown freeze | Yes | No (immediate movement) |
+| Race timers/laps | Yes | No |
+| Race HUD | Yes | No |
+| Speedometer | Yes | Yes |
+| Checkpoints | Validation + respawn | Respawn only |
+| Return to Lobby | Yes | Yes |
+
+#### Key Components
+- **GameModeService** (server): Reads `player.GetJoinData().TeleportData`, exposes `isRaceMode()`/`isSandboxMode()`, handles return to lobby
+- **GameModeController** (client): Listens for `gamemodeReady` event, exposes mode checks to other controllers
+- **GameMenuController** (client): Always-visible menu button (top-right), Return to Lobby overlay
+
+#### TeleportData Structure
+```typescript
+interface TeleportData {
+  gamemodeId: "race" | "sandbox";
+  mapId?: string;
+  partyId?: string;
+}
+```
+
+#### Gamemode Priority
+GameModeService determines the gamemode in this order:
+1. **TeleportData** from lobby (highest priority, used in live games)
+2. **DefaultGamemode attribute** on `Workspace.Map` folder (useful for Studio testing)
+3. **Default to "race"** if neither is set
+
+#### Setting Default Gamemode for a Map
+Add a `DefaultGamemode` attribute to `Workspace.Map`:
+- Type: String
+- Value: "race" or "sandbox"
+
+This is useful for:
+- Testing sandbox mode in Studio without modifying code
+- Setting a default gamemode for maps that should always be sandbox
 
 ### Lobby Queue System
 
@@ -201,7 +302,14 @@ Race settings in `src/shared/constants/RaceConfig.ts`:
 
 - **TOTAL_LAPS**: Number of laps per race (default: 3)
 - **DEFAULT_RESPAWN_BARRIER_Y**: Default Y position for death barrier (default: -400)
+- **SHOWCASE_MIN_DURATION**: Minimum seconds in showcase mode (default: 10)
+- **SHOWCASE_MAX_DURATION**: Timeout for waiting for players (default: 30)
+- **STARTING_DURATION**: Seconds for "Race about to start" message (default: 5)
+- **COUNTDOWN_DURATION**: Seconds for 5-4-3-2-1 countdown (default: 5)
+- **CAMERA_TRANSITION_DURATION**: Seconds to transition from showcase to player camera (default: 2)
+- **STATUS_FONT_SIZE**: Font size for status messages (default: 48)
 - **HUD**: Positioning, padding, font sizes, colors for race UI
+- **COUNTDOWN**: Font size, colors for countdown numbers and "Race!" text
 - **FINISH_SCREEN**: Overlay transparency, title/time colors and sizes
 
 ## Key Configuration (LobbyConfig.ts)
@@ -229,11 +337,25 @@ ClientEvents:
 RaceServerEvents (Client → Server):
   - checkpointCrossed(checkpointNumber): void  // Client touched checkpoint
   - requestRespawn(): void                     // Client fell below death barrier
+  - playerLoaded(): void                       // Client signals ball ready
 
 RaceClientEvents (Server → Client):
   - raceStateUpdated(state: PlayerRaceState): void  // Full state sync
   - respawnCompleted(): void                        // Respawn finished
   - raceStarted(startTime: number): void            // Race timer started
+  - countdownStarted(): void                        // Transition to countdown, start camera transition
+  - gameStateChanged(state: RaceGameState): void    // State updates (waiting/starting/countdown/racing)
+  - allPlayersLoaded(): void                        // All players loaded, hide "Waiting for players"
+```
+
+### Game Network Events (game/shared/network.ts)
+
+```typescript
+GameServerEvents (Client → Server):
+  - requestReturnToLobby(): void  // Player wants to return to lobby
+
+GameClientEvents (Server → Client):
+  - gamemodeReady(gamemodeId: GamemodeId): void  // Server tells client the gamemode
 ```
 
 ### Lobby Network Events (lobby/shared/network.ts)
@@ -298,27 +420,50 @@ LobbyClientEvents (Server → Client):
 
 ### Setting Up Race Tracks
 1. Create a Folder in Workspace and tag it with `RaceCheckpoints` (via CollectionService)
-2. Add Part children to the folder:
-   - Set `CheckpointNumber` attribute (number): 0 = start/finish, 1, 2, 3... for sequence
-   - Set `CanCollide = false`, `CanTouch = true`
-3. Optionally add SpawnPoint children under checkpoints:
-   - Name them `SpawnPoint1`, `SpawnPoint2`, etc.
-   - These define where players spawn/respawn at that checkpoint
-   - If no SpawnPoints, uses checkpoint's CFrame as fallback
-4. Set death barrier Y:
+2. Add Folder children for each checkpoint:
+   - Name the folder with a number suffix: `Checkpoint0`, `Checkpoint1`, `CP2`, etc. (number is parsed from name)
+   - Add a Part named `Checkpoint` inside (the trigger zone): `CanCollide = false`, `CanTouch = true`
+   - Optionally add `SpawnPoint1`, `SpawnPoint2`, etc. parts for spawn positions
+   - If no SpawnPoints, uses the Checkpoint part's CFrame as fallback
+3. Set death barrier Y:
    - Add `RespawnBarrierY` attribute (number) to `Workspace.Map` folder
    - Players falling below this Y position respawn at last checkpoint
+4. (Optional) Set default gamemode:
+   - Add `DefaultGamemode` attribute (string) to `Workspace.Map` folder
+   - Value: "race" or "sandbox"
+   - Used when no TeleportData is present (e.g., Studio testing)
 
 ```
 Workspace/
-├── Map/                        (Folder, optional RespawnBarrierY attribute)
+├── Map/                        (Folder, attributes: RespawnBarrierY, DefaultGamemode)
 └── RaceCheckpoints/            (Folder, tagged "RaceCheckpoints")
-    ├── Checkpoint0             (Part, CheckpointNumber=0)
+    ├── Checkpoint0/            (Folder, number parsed from name)
+    │   ├── Checkpoint          (Part, trigger zone)
     │   ├── SpawnPoint1         (Part)
     │   └── SpawnPoint2         (Part)
-    ├── Checkpoint1             (Part, CheckpointNumber=1)
-    └── Checkpoint2             (Part, CheckpointNumber=2)
+    ├── Checkpoint1/            (Folder)
+    │   └── Checkpoint          (Part, trigger zone)
+    └── Checkpoint2/            (Folder)
+        └── Checkpoint          (Part, trigger zone)
 ```
+
+### Setting Up Showcase Camera
+1. Create a **Folder** in Workspace named `ShowcaseCameraWaypoints`
+2. **Tag the folder** with `ShowcaseCameraWaypoints` (via CollectionService)
+3. Add **Part children** inside the folder for each waypoint
+4. **Rotate parts to face where camera should look** (LookVector = camera direction)
+5. Name parts with a number suffix for ordering (e.g., `Waypoint1`, `Waypoint2`, `Waypoint3`)
+6. Set parts: `Anchored = true`, `Transparency = 1`, `CanCollide = false`
+
+```
+Workspace/
+└── ShowcaseCameraWaypoints/    (Folder, tagged "ShowcaseCameraWaypoints")
+    ├── Waypoint1               (Part, camera position/rotation)
+    ├── Waypoint2               (Part)
+    └── Waypoint3               (Part)
+```
+
+The camera will parse the waypoint number from each Part's name and move between them smoothly.
 
 ## Validation
 The server validates ball and trail templates on startup with detailed error messages if misconfigured.

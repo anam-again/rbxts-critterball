@@ -761,8 +761,13 @@ export class PartyService implements OnStart {
 			return;
 		}
 
-		// Create teleport options
+		// Create teleport options with gamemode data
 		const teleportOptions = new Instance("TeleportOptions");
+		teleportOptions.SetTeleportData({
+			gamemodeId: party.selectedGamemodeId?.lower() ?? "race",
+			mapId: party.selectedMapId,
+			partyId: party.partyId,
+		});
 
 		// Teleport all players together
 		const [success, errorMessage] = pcall(() => {

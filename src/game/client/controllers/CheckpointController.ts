@@ -1,19 +1,22 @@
-import { Controller, OnStart } from "@flamework/core";
+import { Controller, OnStart, Dependency } from "@flamework/core";
 import { CollectionService, Players, RunService, Workspace } from "@rbxts/services";
 import { RaceConfig } from "shared/constants/RaceConfig";
 import { TAGS } from "shared/globals";
 import { ClientEvents } from "game/client/network";
 import { RaceServerEvents, RaceClientEvents } from "game/client/network";
+import { GameModeController } from "./GameModeController";
 
 const LOG_PREFIX = "[CheckpointController]";
 
 @Controller()
 export class CheckpointController implements OnStart {
+	private gameModeController = Dependency<GameModeController>();
 	private player = Players.LocalPlayer;
 	private sphere?: BasePart;
 	private respawnBarrierY: number = RaceConfig.DEFAULT_RESPAWN_BARRIER_Y;
 	private isRespawning = false;
 	private checkpointConnections: RBXScriptConnection[] = [];
+	private isRaceMode = false; // Cached after gamemode is ready
 
 	onStart(): void {
 		print(`${LOG_PREFIX} Started`);
@@ -23,6 +26,11 @@ export class CheckpointController implements OnStart {
 
 		// Setup checkpoints
 		this.setupCheckpoints();
+
+		// Cache gamemode when ready
+		this.gameModeController.onGamemodeReady((gamemodeId) => {
+			this.isRaceMode = gamemodeId === "race";
+		});
 
 		// Listen for ball ready
 		ClientEvents.ballReady.connect((ball) => {
@@ -80,14 +88,19 @@ export class CheckpointController implements OnStart {
 
 		const checkpointsFolder = checkpointFolders[0] as Folder;
 
-		// Setup Touched events on each checkpoint
+		// Setup Touched events on each checkpoint folder's Checkpoint part
 		for (const child of checkpointsFolder.GetChildren()) {
-			if (!child.IsA("BasePart")) continue;
+			if (!child.IsA("Folder")) continue;
 
-			const checkpointNumber = child.GetAttribute("CheckpointNumber") as number | undefined;
+			// Parse checkpoint number from folder name (e.g., "Checkpoint0" -> 0)
+			const checkpointNumber = this.parseCheckpointNumber(child.Name);
 			if (checkpointNumber === undefined) continue;
 
-			const connection = child.Touched.Connect((hit) => {
+			// Find the Checkpoint part inside the folder
+			const checkpointPart = child.FindFirstChild("Checkpoint") as BasePart | undefined;
+			if (!checkpointPart || !checkpointPart.IsA("BasePart")) continue;
+
+			const connection = checkpointPart.Touched.Connect((hit) => {
 				this.onCheckpointTouched(checkpointNumber, hit);
 			});
 			this.checkpointConnections.push(connection);
@@ -105,8 +118,19 @@ export class CheckpointController implements OnStart {
 		// Only react to our ball's sphere
 		if (!this.sphere || hit !== this.sphere) return;
 
-		// Fire to server
-		RaceServerEvents.checkpointCrossed.fire(checkpointNumber);
+		// Only fire checkpoint events in race mode (sandbox uses checkpoints for respawn only)
+		if (this.isRaceMode) {
+			RaceServerEvents.checkpointCrossed.fire(checkpointNumber);
+		}
+	}
+
+	private parseCheckpointNumber(name: string): number | undefined {
+		// Extract number from end of name (e.g., "Checkpoint0" -> 0, "CP5" -> 5)
+		const match = name.match("(%d+)$");
+		if (match && match[0]) {
+			return tonumber(match[0]);
+		}
+		return undefined;
 	}
 
 	private checkDeathBarrier(): void {

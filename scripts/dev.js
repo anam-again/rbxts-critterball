@@ -1,10 +1,10 @@
 const { spawn } = require("child_process");
 const { PLACES } = require("./config");
 
-const target = process.argv[2]; // "lobby" or "testing"
+const target = process.argv[2]; // "lobby" or "spaceloop"
 
 if (!target || !PLACES[target]) {
-	console.error("Usage: node scripts/dev.js <lobby|testing>");
+	console.error("Usage: node scripts/dev.js <lobby|spaceloop>");
 	console.error("Available places:", Object.keys(PLACES).join(", "));
 	process.exit(1);
 }

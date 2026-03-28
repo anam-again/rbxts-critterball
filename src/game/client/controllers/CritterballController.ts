@@ -1,12 +1,15 @@
 import { Controller, OnStart, Dependency } from "@flamework/core";
 import { CollectionService, ContextActionService, Lighting, Players, RunService, Workspace } from "@rbxts/services";
 import { BallConfig } from "shared/constants/BallConfig";
-import { ClientEvents } from "game/client/network";
+import { ClientEvents, RaceClientEvents, RaceServerEvents } from "game/client/network";
 import { TAGS, SPEED_BOOST_ATTRIBUTES, BOUNCER_ATTRIBUTES } from "shared/globals";
 import { PowerupUIController, PowerupType } from "./PowerupUIController";
+import { RaceGameState } from "shared/types/RaceTypes";
+import { GameModeController } from "./GameModeController";
 
 @Controller()
 export class CritterballController implements OnStart {
+	private gameModeController = Dependency<GameModeController>();
 	private ball?: Model;
 	private sphere?: BasePart;
 	private sphereRadius = 0;
@@ -54,6 +57,10 @@ export class CritterballController implements OnStart {
 	private impactBlurEffect?: BlurEffect;
 	private impactBlurIntensity = 0;
 
+	// Color correction (saturation)
+	private colorCorrectionEffect?: ColorCorrectionEffect;
+	private currentSaturation = 0;
+
 	// Speed boost zones
 	private boostZoneObjects: BoostZoneObject[] = [];
 	private boostZoneParts: BasePart[] = []; // Just the BoostZone parts for overlap detection
@@ -85,6 +92,10 @@ export class CritterballController implements OnStart {
 	private powerupOriginalCFrames = new Map<SpeedPowerup, CFrame>(); // Original position for animation
 	private powerupAnimTime = 0; // Global animation time for powerups
 
+	// Race state - controls if input is active
+	private gameState: RaceGameState = "waiting";
+	private isFrozen = true; // Start frozen until race begins
+
 	onStart(): void {
 		print("Critterball Client Started!");
 
@@ -96,6 +107,9 @@ export class CritterballController implements OnStart {
 
 		// Create impact blur effect
 		this.createImpactBlurEffect();
+
+		// Create color correction effect
+		this.createColorCorrectionEffect();
 
 		// Setup boost zone tracking
 		this.setupBoostZones();
@@ -109,6 +123,28 @@ export class CritterballController implements OnStart {
 		// Listen for ball ready event
 		ClientEvents.ballReady.connect((ball) => {
 			this.onBallReady(ball);
+		});
+
+		// Wait for gamemode to be ready before setting up mode-specific behavior
+		this.gameModeController.onGamemodeReady((gamemodeId) => {
+			if (gamemodeId === "sandbox") {
+				// Sandbox mode: start unfrozen immediately
+				this.isFrozen = false;
+				this.gameState = "racing";
+				print("[CritterballController] Sandbox mode - input enabled immediately");
+			} else {
+				// Race mode: Listen for game state changes
+				RaceClientEvents.gameStateChanged.connect((state) => {
+					this.onGameStateChanged(state);
+				});
+
+				// Listen for race started
+				RaceClientEvents.raceStarted.connect(() => {
+					this.isFrozen = false;
+					this.gameState = "racing";
+					print("[CritterballController] Race started - input enabled");
+				});
+			}
 		});
 
 		// Setup input bindings
@@ -172,7 +208,22 @@ export class CritterballController implements OnStart {
 		// Initialize previous velocity
 		this.previousVelocity = this.sphere.AssemblyLinearVelocity;
 
+		// Notify server that we're loaded and ready
+		RaceServerEvents.playerLoaded.fire();
+
 		print("Ball ready! Controls active.");
+	}
+
+	private onGameStateChanged(state: RaceGameState): void {
+		this.gameState = state;
+
+		if (state === "racing") {
+			this.isFrozen = false;
+		} else {
+			this.isFrozen = true;
+		}
+
+		print(`[CritterballController] Game state changed: ${state}, frozen: ${this.isFrozen}`);
 	}
 
 	private setupBoostZones(): void {
@@ -880,6 +931,12 @@ export class CritterballController implements OnStart {
 
 		if (!this.sphere) return;
 
+		// Skip movement physics when frozen (waiting or countdown state)
+		if (this.isFrozen) {
+			// Still update visual effects but don't apply any input
+			return;
+		}
+
 		// Get current horizontal velocity and speed
 		const velocity = this.sphere.AssemblyLinearVelocity;
 		const horizontalVelocity = new Vector3(velocity.X, 0, velocity.Z);
@@ -985,6 +1042,9 @@ export class CritterballController implements OnStart {
 
 		// Update impact blur
 		this.updateImpactBlur(dt);
+
+		// Update color correction (saturation based on speed)
+		this.updateColorCorrection(currentSpeed, dt);
 
 		// Update neon glow (speed-based + flash effect)
 		this.updateNeonGlow(currentSpeed, dt);
@@ -1476,6 +1536,47 @@ export class CritterballController implements OnStart {
 
 		// Decay blur
 		this.impactBlurIntensity = math.max(0, this.impactBlurIntensity - BallConfig.IMPACT_BLUR_DECAY_RATE * dt);
+	}
+
+	private createColorCorrectionEffect(): void {
+		let colorCorrection = Lighting.FindFirstChild("SpeedColorCorrection") as ColorCorrectionEffect | undefined;
+
+		if (!colorCorrection) {
+			colorCorrection = new Instance("ColorCorrectionEffect");
+			colorCorrection.Name = "SpeedColorCorrection";
+			colorCorrection.Saturation = 0;
+			colorCorrection.Parent = Lighting;
+		}
+
+		this.colorCorrectionEffect = colorCorrection;
+	}
+
+	private updateColorCorrection(currentSpeed: number, dt: number): void {
+		if (!this.colorCorrectionEffect) return;
+
+		// Convert actual speed to shown/display speed
+		const shownSpeed = currentSpeed * BallConfig.SPEED_DISPLAY_MULTIPLIER;
+
+		// Calculate target saturation based on shown speed
+		let targetSaturation: number;
+
+		if (shownSpeed <= BallConfig.SATURATION_SPEED_MIN) {
+			targetSaturation = BallConfig.SATURATION_MIN;
+		} else if (shownSpeed >= BallConfig.SATURATION_SPEED_MAX) {
+			targetSaturation = BallConfig.SATURATION_MAX;
+		} else {
+			// Linear interpolation between min and max
+			const speedRatio = (shownSpeed - BallConfig.SATURATION_SPEED_MIN) /
+				(BallConfig.SATURATION_SPEED_MAX - BallConfig.SATURATION_SPEED_MIN);
+			targetSaturation = this.lerp(BallConfig.SATURATION_MIN, BallConfig.SATURATION_MAX, speedRatio);
+		}
+
+		// Smoothly interpolate to target saturation
+		const lerpFactor = math.clamp(BallConfig.SATURATION_LERP_SPEED * dt, 0, 1);
+		this.currentSaturation = this.lerp(this.currentSaturation, targetSaturation, lerpFactor);
+
+		// Apply saturation to color correction
+		this.colorCorrectionEffect.Saturation = this.currentSaturation;
 	}
 
 	// ============================================

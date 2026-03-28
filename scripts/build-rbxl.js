@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { PLACES } = require("./config");
 
-const target = process.argv[2]; // "lobby", "testing", or "all"
+const target = process.argv[2]; // "lobby", "spaceloop", or "all"
 
 function build(name) {
 	const place = PLACES[name];
@@ -30,10 +30,10 @@ execSync("rbxtsc --rojo build.project.json", { stdio: "inherit", shell: true });
 
 if (target === "all") {
 	build("lobby");
-	build("testing");
+	build("spaceloop");
 } else if (target) {
 	build(target);
 } else {
-	console.error("Usage: node scripts/build-rbxl.js <lobby|testing|all>");
+	console.error("Usage: node scripts/build-rbxl.js <lobby|spaceloop|all>");
 	process.exit(1);
 }

@@ -18,6 +18,15 @@ export const MAPS: ReadonlyMap<string, MapConfig> = new Map([
 // Gamemode configurations
 export const GAMEMODES: ReadonlyMap<string, GamemodeConfig> = new Map([
 	[
+		"Race",
+		{
+			id: "Race",
+			name: "Race",
+			description: "Compete against others! Countdown, laps, and timers.",
+			availableMaps: ["Spaceloop"],
+		},
+	],
+	[
 		"Sandbox",
 		{
 			id: "Sandbox",

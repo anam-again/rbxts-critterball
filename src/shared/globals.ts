@@ -6,6 +6,7 @@ export const TAGS = {
 	BOUNCER: "Bouncer",
 	SPEED_POWERUP: "SpeedPowerup",
 	RACE_CHECKPOINTS: "RaceCheckpoints",
+	SHOWCASE_CAMERA_WAYPOINTS: "ShowcaseCameraWaypoints",
 } as const;
 
 // Attribute names for speed boost zones

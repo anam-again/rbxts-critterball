@@ -25,7 +25,14 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - Character becomes massless inside ball
 - Customizable friction and elasticity
 
-### Racing System
+### Gamemode System
+- **Race Mode**: Full race experience with countdown, showcase camera, timers, laps
+- **Sandbox Mode**: Free play with immediate movement, no race UI, speedometer only
+- **In-game Menu**: Return to Lobby button accessible from any gamemode
+
+### Racing System (Race Mode)
+- **Pre-race sequence**: Showcase camera, "Waiting for players" message, smooth camera transition
+- **Race start countdown**: 5-4-3-2-1-Race! with animated UI
 - **Checkpoint-based racing**: Server-authoritative checkpoint validation
 - **3-lap races**: Configurable lap count with automatic lap tracking
 - **Death barrier**: Fall below the barrier to respawn at last checkpoint
@@ -56,10 +63,10 @@ npm install
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev <place>` | Start dev server (lobby/testing) |
+| `npm run dev <place>` | Start dev server (lobby/spaceloop) |
 | `npm run build` | Compile TypeScript |
-| `npm run build:rbxl <place>` | Build .rbxl file (lobby/testing/all) |
-| `npm run deploy <place>` | Deploy to Roblox (lobby/testing/all) |
+| `npm run build:rbxl <place>` | Build .rbxl file (lobby/spaceloop/all) |
+| `npm run deploy <place>` | Deploy to Roblox (lobby/spaceloop/all) |
 | `npm run release` | Full release: build, .rbxl, deploy |
 | `npm run lint` | Run ESLint with auto-fix |
 
@@ -131,23 +138,53 @@ ReplicatedStorage/
 
 1. **Create checkpoints folder**: Create a Folder in Workspace and tag it with `RaceCheckpoints` via CollectionService
 
-2. **Add checkpoints**: Add Part children to the folder with:
-   - `CheckpointNumber` attribute (number): 0 = start/finish, 1, 2, 3... for subsequent checkpoints
-   - `CanCollide = false`, `CanTouch = true`
-   - Optional: Add child Parts named `SpawnPoint1`, `SpawnPoint2`, etc. for spawn positions
+2. **Add checkpoint folders**: Add Folder children for each checkpoint:
+   - Name with a number suffix: `Checkpoint0`, `Checkpoint1`, `CP2`, etc. (number is parsed from name)
+   - A Part named `Checkpoint` inside (trigger zone): `CanCollide = false`, `CanTouch = true`
+   - Optional: Add `SpawnPoint1`, `SpawnPoint2`, etc. parts for spawn positions
 
 3. **Set death barrier**: Add `RespawnBarrierY` attribute (number) to the `Workspace.Map` folder
 
+4. **Set default gamemode** (optional): Add `DefaultGamemode` attribute (string) to `Workspace.Map`
+   - Value: `"race"` or `"sandbox"`
+   - Used when no TeleportData is present (e.g., Studio testing)
+
 ```
 Workspace/
-├── Map/                        (Folder, optional RespawnBarrierY attribute)
+├── Map/                        (Folder, attributes: RespawnBarrierY, DefaultGamemode)
 └── RaceCheckpoints/            (Folder, tagged "RaceCheckpoints")
-    ├── Checkpoint0             (Part, CheckpointNumber=0)
+    ├── Checkpoint0/            (Folder, number parsed from name)
+    │   ├── Checkpoint          (Part, trigger zone)
     │   ├── SpawnPoint1         (Part)
     │   └── SpawnPoint2         (Part)
-    ├── Checkpoint1             (Part, CheckpointNumber=1)
-    └── Checkpoint2             (Part, CheckpointNumber=2)
+    ├── Checkpoint1/            (Folder)
+    │   └── Checkpoint          (Part, trigger zone)
+    └── Checkpoint2/            (Folder)
+        └── Checkpoint          (Part, trigger zone)
 ```
+
+### Showcase Camera Setup (Game Worlds)
+
+The showcase camera plays during the pre-race waiting period, moving between waypoints to show off the track.
+
+1. **Create waypoints folder**: Create a Folder in Workspace named `ShowcaseCameraWaypoints`
+
+2. **Tag the folder**: Add the `ShowcaseCameraWaypoints` tag via CollectionService
+
+3. **Add waypoint parts**: Add Part children for each camera position:
+   - Name with a number suffix: `Waypoint1`, `Waypoint2`, `Waypoint3`, etc.
+   - Rotate the part to face where the camera should look (uses LookVector)
+   - Set: `Anchored = true`, `Transparency = 1`, `CanCollide = false`
+
+```
+Workspace/
+└── ShowcaseCameraWaypoints/    (Folder, tagged "ShowcaseCameraWaypoints")
+    ├── Waypoint1               (Part, camera position/rotation)
+    ├── Waypoint2               (Part)
+    └── Waypoint3               (Part)
+```
+
+The camera smoothly moves between waypoints in order, looping back to the first. When the countdown starts, it transitions smoothly to the player's ball.
 
 ## Controls
 
@@ -158,7 +195,9 @@ Workspace/
 | S | Move backward |
 | D | Move right |
 | Space | Jump |
+| E | Use powerup |
 | Mouse | Rotate camera |
+| ☰ (top-right) | Open game menu (Return to Lobby) |
 
 ## Configuration
 
@@ -175,8 +214,18 @@ Race settings are in `src/shared/constants/RaceConfig.ts`:
 
 - Total laps per race
 - Default respawn barrier Y position
+- Pre-race timing (showcase duration, countdown duration)
+- Camera transition duration
+- Status message styling ("Waiting for players", "Race about to start")
+- Countdown UI styling (numbers, "Race!" text)
 - HUD positioning and styling
 - Finish screen appearance
+
+Gamemode settings are in `src/shared/constants/LobbyConfig.ts`:
+
+- Available gamemodes (Race, Sandbox)
+- Maps available per gamemode
+- Party configuration
 
 ## Tech Stack
 
