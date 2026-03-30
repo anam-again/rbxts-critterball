@@ -342,7 +342,7 @@ export class CritterballService implements OnStart {
 			return;
 		}
 
-		// Create invisible anchor part that follows the ball but doesn't rotate
+		// Create invisible anchor part welded to the sphere
 		const trailAnchor = new Instance("Part");
 		trailAnchor.Name = PART_NAMES.TRAIL_ANCHOR;
 		trailAnchor.Size = new Vector3(1, 1, 1);
@@ -355,38 +355,12 @@ export class CritterballService implements OnStart {
 		trailAnchor.CFrame = sphere.CFrame;
 		trailAnchor.Parent = ball;
 
-		// Create attachment on sphere for AlignPosition
-		const sphereAttachment = new Instance("Attachment");
-		sphereAttachment.Name = PART_NAMES.TRAIL_FOLLOW_ATTACHMENT;
-		sphereAttachment.Parent = sphere;
-
-		// Create attachment on trail anchor
-		const anchorAttachment = new Instance("Attachment");
-		anchorAttachment.Name = PART_NAMES.TRAIL_ANCHOR_ATTACHMENT;
-		anchorAttachment.Parent = trailAnchor;
-
-		// AlignPosition to follow the ball
-		const alignPosition = new Instance("AlignPosition");
-		alignPosition.Name = PART_NAMES.TRAIL_ALIGN_POSITION;
-		alignPosition.Attachment0 = anchorAttachment;
-		alignPosition.Attachment1 = sphereAttachment;
-		alignPosition.MaxForce = 1000000;
-		alignPosition.MaxVelocity = math.huge;
-		alignPosition.Responsiveness = 200;
-		alignPosition.Parent = trailAnchor;
-
-		// AlignOrientation to stay upright (world space)
-		const alignOrientation = new Instance("AlignOrientation");
-		alignOrientation.Name = PART_NAMES.TRAIL_ALIGN_ORIENTATION;
-		alignOrientation.Attachment0 = anchorAttachment;
-		alignOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment;
-		alignOrientation.CFrame = new CFrame(); // World upright
-		alignOrientation.MaxTorque = 1000000;
-		alignOrientation.Responsiveness = 200;
-		alignOrientation.Parent = trailAnchor;
-
-		// Set network ownership to the player
-		trailAnchor.SetNetworkOwner(player);
+		// Weld the trail anchor to the sphere (reliable connection that won't disconnect)
+		const weld = new Instance("WeldConstraint");
+		weld.Name = PART_NAMES.TRAIL_WELD;
+		weld.Part0 = sphere;
+		weld.Part1 = trailAnchor;
+		weld.Parent = trailAnchor;
 
 		// Clone trail template contents onto the anchor
 		this.applyTrailTemplate(trailAnchor, trailTemplate);
@@ -395,9 +369,9 @@ export class CritterballService implements OnStart {
 	}
 
 	private applyTrailTemplate(trailAnchor: Part, trailTemplate: Folder): void {
-		// Remove existing trail components
+		// Remove existing trail components (but keep the weld)
 		for (const child of trailAnchor.GetChildren()) {
-			if (child.IsA("Trail") || (child.IsA("Attachment") && child.Name !== PART_NAMES.TRAIL_ANCHOR_ATTACHMENT)) {
+			if (child.IsA("Trail") || child.IsA("Attachment")) {
 				child.Destroy();
 			}
 		}

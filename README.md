@@ -12,7 +12,7 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - Tight turning that redirects momentum
 
 ### Visual Effects
-- **Dynamic Trail**: Scales with speed (opacity, width, length)
+- **Dynamic Trail**: Scales with speed (opacity, width, length), welded to ball for reliability
 - **Rolling Dust**: Particles when rolling, color matches ground
 - **Impact Stars**: Particle burst on collisions, scales with impact force
 - **Screen Shake**: On heavy impacts and at high speeds
@@ -36,8 +36,16 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - **Checkpoint-based racing**: Server-authoritative checkpoint validation
 - **3-lap races**: Configurable lap count with automatic lap tracking
 - **Death barrier**: Fall below the barrier to respawn at last checkpoint
-- **Race HUD**: Live timer, lap counter, and checkpoint progress
+- **Race HUD**: Live timer, lap counter, checkpoint progress, and race position
+- **Position tracking**: Real-time position display with gold/silver/bronze colors for top 3
 - **Finish screen**: Overlay with final time on race completion
+
+### Bot System (Race Mode)
+- **AI racers**: Server-controlled bots that auto-fill races (up to 8 total racers)
+- **Waypoint navigation**: Bots follow dedicated waypoints with obstacle avoidance
+- **Difficulty levels**: Easy, Medium, Hard with varying speed and turning ability
+- **Race integration**: Bots track checkpoints, laps, and compete for positions
+- **Stuck recovery**: Automatic respawn when bots get stuck or fall off track
 
 ## Multi-Place Universe
 
@@ -200,6 +208,39 @@ Workspace/
 ```
 
 The camera smoothly moves between waypoints in order, looping back to the first. When the countdown starts, it transitions smoothly to the player's ball.
+
+### Bot Waypoint Setup (Game Worlds)
+
+Bots navigate using dedicated waypoints separate from race checkpoints. This allows fine-grained control over bot pathing.
+
+1. **Create navigate waypoints folder**: Create a Folder in Workspace named `BotWaypoints`
+
+2. **Tag the folder**: Add the `BotWaypoints` tag via CollectionService
+
+3. **Add waypoint parts**: Add Part children for each navigation point:
+   - Name with a number suffix: `Waypoint1`, `Waypoint2`, etc.
+   - Set: `Anchored = true`, `Transparency = 1`, `CanCollide = false`
+   - Optional attribute `JumpZone = true` for jump points
+   - Optional attribute `Radius` to override capture radius (default: 10)
+
+4. **Create avoid waypoints** (optional): For obstacles bots should steer around:
+   - Create a Folder named `BotAvoidWaypoints`, tag with `BotAvoidWaypoints`
+   - Add Part children at obstacle centers
+   - Optional attributes: `AvoidRadius` (default: 20), `AvoidStrength` (default: 1.0)
+
+```
+Workspace/
+├── BotWaypoints/               (Folder, tagged "BotWaypoints")
+│   ├── Waypoint1               (Part, first target)
+│   ├── Waypoint2               (Part)
+│   ├── Waypoint3               (Part, JumpZone=true for gaps)
+│   └── ...
+└── BotAvoidWaypoints/          (Folder, tagged "BotAvoidWaypoints")
+    ├── Avoid1                  (Part, obstacle center)
+    └── Avoid2                  (Part)
+```
+
+**Note**: Bots automatically spawn to fill races up to 8 total racers. They use waypoints for navigation but validate progress against race checkpoints for position tracking.
 
 ## Controls
 

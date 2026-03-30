@@ -61,6 +61,9 @@
       "$properties": {
         "RespectFilteringEnabled": true
       }
+    },
+    "Lighting": {
+      "$path": "assets/lighting/Lobby"
     }
   }
 }

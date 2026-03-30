@@ -7,6 +7,8 @@ export const TAGS = {
 	SPEED_POWERUP: "SpeedPowerup",
 	RACE_CHECKPOINTS: "RaceCheckpoints",
 	SHOWCASE_CAMERA_WAYPOINTS: "ShowcaseCameraWaypoints",
+	BOT_WAYPOINTS: "BotWaypoints",
+	BOT_AVOID_WAYPOINTS: "BotAvoidWaypoints",
 } as const;
 
 // Attribute names for speed boost zones

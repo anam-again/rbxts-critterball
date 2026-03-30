@@ -34,3 +34,11 @@ export interface SpawnData {
 	position: Vector3;
 	lookVector: Vector3;
 }
+
+/**
+ * Race position update sent to clients.
+ */
+export interface RacePositionUpdate {
+	position: number; // 1-based (1st, 2nd, etc.)
+	totalRacers: number; // Total players + bots
+}

@@ -11,6 +11,7 @@ const LOG_PREFIX = "[RaceService]";
 
 interface CheckpointData {
 	number: number;
+	position: Vector3;
 	spawnPoints: CFrame[];
 }
 
@@ -45,10 +46,18 @@ export class RaceService implements OnStart {
 		// Check if we're in sandbox mode
 		const isSandbox = this.gameModeService.isSandboxMode();
 
+		// Check for SkipIntro attribute on Map folder
+		const skipIntro = this.checkSkipIntro();
+
 		if (isSandbox) {
 			// Sandbox mode: Set game state to racing immediately, skip race features
 			this.gameState = RaceGameState.RACING;
 			print(`${LOG_PREFIX} Sandbox mode - skipping race initialization`);
+		} else if (skipIntro) {
+			// Skip intro: Go straight to racing but keep race features (checkpoints, laps)
+			this.gameState = RaceGameState.RACING;
+			this.raceStartTime = tick();
+			print(`${LOG_PREFIX} SkipIntro enabled - starting race immediately`);
 		} else {
 			// Race mode: Initialize showcase and race sequence
 			this.showcaseStartTime = tick();
@@ -62,15 +71,18 @@ export class RaceService implements OnStart {
 			this.onRespawnRequested(player);
 		});
 
-		// Checkpoint validation only in race mode
+		// Checkpoint validation only in race mode (including skip intro)
 		if (!isSandbox) {
 			RaceServerEvents.checkpointCrossed.connect((player, checkpointNumber) => {
 				this.onCheckpointCrossed(player, checkpointNumber);
 			});
 
-			RaceServerEvents.playerLoaded.connect((player) => {
-				this.onPlayerLoaded(player);
-			});
+			// Only listen for player loaded if we have an intro sequence
+			if (!skipIntro) {
+				RaceServerEvents.playerLoaded.connect((player) => {
+					this.onPlayerLoaded(player);
+				});
+			}
 		}
 
 		// Handle player joining
@@ -85,6 +97,17 @@ export class RaceService implements OnStart {
 		Players.PlayerRemoving.Connect((player) => {
 			this.removePlayer(player);
 		});
+	}
+
+	private checkSkipIntro(): boolean {
+		const mapFolder = Workspace.FindFirstChild(PART_NAMES.MAP) as Folder | undefined;
+		if (mapFolder) {
+			const skipIntro = mapFolder.GetAttribute(ATTRIBUTE_NAMES.SKIP_INTRO) as boolean | undefined;
+			if (skipIntro === true) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public removePlayer(player: Player): void {
@@ -112,6 +135,19 @@ export class RaceService implements OnStart {
 
 	public getGameState(): RaceGameState {
 		return this.gameState;
+	}
+
+	public getPlayerState(player: Player): PlayerRaceState | undefined {
+		return this.playerStates.get(player);
+	}
+
+	public getCheckpointCount(): number {
+		return this.totalCheckpoints;
+	}
+
+	public getCheckpointPosition(checkpointNumber: number): Vector3 | undefined {
+		const checkpoint = this.checkpoints.find((cp) => cp.number === checkpointNumber);
+		return checkpoint?.position;
 	}
 
 	private onHeartbeat(): void {
@@ -286,6 +322,7 @@ export class RaceService implements OnStart {
 
 			this.checkpoints.push({
 				number: checkpointNumber,
+				position: checkpointPart.Position,
 				spawnPoints: spawnPoints,
 			});
 		}
@@ -328,13 +365,16 @@ export class RaceService implements OnStart {
 	}
 
 	private initializePlayerRace(player: Player): void {
+		// If race is already in progress (SkipIntro), use the existing start time
+		const startTime = this.gameState === RaceGameState.RACING ? this.raceStartTime : 0;
+
 		const state: PlayerRaceState = {
 			currentCheckpoint: 0,
 			totalCheckpoints: this.totalCheckpoints,
 			currentLap: 1,
 			totalLaps: RaceConfig.TOTAL_LAPS,
-			raceStartTime: 0, // Will be set when race actually starts
-			lapStartTime: 0,
+			raceStartTime: startTime,
+			lapStartTime: startTime,
 			isFinished: false,
 			gameState: this.gameState,
 		};
@@ -344,6 +384,11 @@ export class RaceService implements OnStart {
 		// Notify client of current game state
 		RaceClientEvents.gameStateChanged.fire(player, this.gameState);
 		RaceClientEvents.raceStateUpdated.fire(player, state);
+
+		// If race is already in progress, also fire raceStarted event
+		if (this.gameState === RaceGameState.RACING && startTime > 0) {
+			RaceClientEvents.raceStarted.fire(player, startTime);
+		}
 	}
 
 	public getSpawnDataForPlayer(player: Player): SpawnData {
@@ -360,17 +405,17 @@ export class RaceService implements OnStart {
 		if (!startCheckpoint) {
 			// Fallback to first checkpoint
 			const firstCheckpoint = this.checkpoints[0];
-			const spawnCFrame = firstCheckpoint.spawnPoints[0];
+			const randomIndex = math.random(0, firstCheckpoint.spawnPoints.size() - 1);
+			const spawnCFrame = firstCheckpoint.spawnPoints[randomIndex];
 			return {
 				position: spawnCFrame.Position,
 				lookVector: spawnCFrame.LookVector,
 			};
 		}
 
-		// Get spawn index for this player (cycles through available spawn points)
-		const spawnIndex = this.playerSpawnIndices.get(player) ?? 0;
-		const spawnPointIndex = spawnIndex % startCheckpoint.spawnPoints.size();
-		const spawnCFrame = startCheckpoint.spawnPoints[spawnPointIndex];
+		// Pick a random spawn point
+		const randomIndex = math.random(0, startCheckpoint.spawnPoints.size() - 1);
+		const spawnCFrame = startCheckpoint.spawnPoints[randomIndex];
 
 		return {
 			position: spawnCFrame.Position,
@@ -384,7 +429,7 @@ export class RaceService implements OnStart {
 			return this.getSpawnDataForPlayer(player);
 		}
 
-		// If at checkpoint 0 (start), use assigned spawn point
+		// If at checkpoint 0 (start), use random spawn point
 		if (state.currentCheckpoint === 0) {
 			return this.getSpawnDataForPlayer(player);
 		}
@@ -395,8 +440,9 @@ export class RaceService implements OnStart {
 			return this.getSpawnDataForPlayer(player);
 		}
 
-		// Use first spawn point of last checkpoint
-		const spawnCFrame = checkpoint.spawnPoints[0];
+		// Pick a random spawn point from last checkpoint
+		const randomIndex = math.random(0, checkpoint.spawnPoints.size() - 1);
+		const spawnCFrame = checkpoint.spawnPoints[randomIndex];
 		return {
 			position: spawnCFrame.Position,
 			lookVector: spawnCFrame.LookVector,

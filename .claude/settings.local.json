@@ -23,7 +23,8 @@
       "Bash(dir:*)",
       "Bash(npm run deploy:all:*)",
       "Bash(node -e \"require\\(''dotenv''\\).config\\(\\); const cookie = process.env.ROBLOSECURITY; console.log\\(''Cookie length:'', cookie?.length\\); console.log\\(''Starts with:'', cookie?.substring\\(0, 50\\)\\); console.log\\(''Ends with:'', cookie?.substring\\(cookie.length - 20\\)\\); console.log\\(''Has newline:'', cookie?.includes\\(''\\\\n''\\)\\); console.log\\(''Has carriage return:'', cookie?.includes\\(''\\\\r''\\)\\);\")",
-      "Bash(rojo upload --help:*)"
+      "Bash(rojo upload --help:*)",
+      "Bash(npm run lint:*)"
     ]
   }
 }

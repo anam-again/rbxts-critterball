@@ -48,6 +48,14 @@ export const RaceConfig = {
 	FINISH_TIME_FONT_SIZE: 48,
 	FINISH_OVERLAY_TRANSPARENCY: 0.7,
 
+	// Position UI
+	POSITION_UPDATE_INTERVAL: 0.1, // Seconds between position updates
+	POSITION_FONT_SIZE: 72,
+	POSITION_SUFFIX_FONT_SIZE: 32,
+	POSITION_FLASH_DURATION: 0.3,
+	POSITION_PULSE_SCALE: 1.15, // Scale when pulsing on position gain
+	POSITION_PULSE_DURATION: 0.2, // Duration of pulse animation
+
 	// Colors (RGB 0-255)
 	TIMER_COLOR: [255, 255, 255] as const,
 	LAP_TIMER_COLOR: [200, 200, 200] as const,
@@ -57,6 +65,12 @@ export const RaceConfig = {
 	FINISH_TIME_COLOR: [255, 255, 255] as const,
 	HUD_BACKGROUND_COLOR: [0, 0, 0] as const,
 	HUD_BACKGROUND_TRANSPARENCY: 0.5,
+	POSITION_COLOR: [255, 255, 255] as const,
+	POSITION_1ST_COLOR: [255, 215, 0] as const, // Gold
+	POSITION_2ND_COLOR: [192, 192, 192] as const, // Silver
+	POSITION_3RD_COLOR: [205, 127, 50] as const, // Bronze
+	POSITION_GAIN_COLOR: [50, 255, 50] as const,
+	POSITION_LOSE_COLOR: [255, 50, 50] as const,
 } as const;
 
 // Pre-computed Color3 values for direct use (avoids repeated Color3 construction)
@@ -71,4 +85,10 @@ export const RaceColors = {
 	STATUS: rgbToColor3(RaceConfig.STATUS_COLOR),
 	COUNTDOWN: rgbToColor3(RaceConfig.COUNTDOWN_COLOR),
 	COUNTDOWN_GO: rgbToColor3(RaceConfig.COUNTDOWN_GO_COLOR),
+	POSITION: rgbToColor3(RaceConfig.POSITION_COLOR),
+	POSITION_1ST: rgbToColor3(RaceConfig.POSITION_1ST_COLOR),
+	POSITION_2ND: rgbToColor3(RaceConfig.POSITION_2ND_COLOR),
+	POSITION_3RD: rgbToColor3(RaceConfig.POSITION_3RD_COLOR),
+	POSITION_GAIN: rgbToColor3(RaceConfig.POSITION_GAIN_COLOR),
+	POSITION_LOSE: rgbToColor3(RaceConfig.POSITION_LOSE_COLOR),
 } as const;

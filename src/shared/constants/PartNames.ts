@@ -46,10 +46,7 @@ export const PART_NAMES = {
 	BALL_CONSTRAINT: "BallConstraint",
 	GRAVITY_ATTACHMENT: "GravityAttachment",
 	GRAVITY_REDUCTION: "GravityReduction",
-	TRAIL_FOLLOW_ATTACHMENT: "TrailFollowAttachment",
-	TRAIL_ANCHOR_ATTACHMENT: "TrailAnchorAttachment",
-	TRAIL_ALIGN_POSITION: "TrailAlignPosition",
-	TRAIL_ALIGN_ORIENTATION: "TrailAlignOrientation",
+	TRAIL_WELD: "TrailWeld",
 	ROLLING_DUST_ATTACHMENT: "RollingDustAttachment",
 } as const;
 
@@ -58,6 +55,7 @@ export const ATTRIBUTE_NAMES = {
 	// Map folder attributes
 	RESPAWN_BARRIER_Y: "RespawnBarrierY",
 	DEFAULT_GAMEMODE: "DefaultGamemode",
+	SKIP_INTRO: "SkipIntro",
 
 	// Boost zone attributes (also in globals.ts SPEED_BOOST_ATTRIBUTES)
 	BOOST_FORCE: "BoostForce",
@@ -65,6 +63,14 @@ export const ATTRIBUTE_NAMES = {
 
 	// Bouncer attributes (also in globals.ts BOUNCER_ATTRIBUTES)
 	IMPULSE_FORCE: "ImpulseForce",
+
+	// Bot waypoint attributes
+	JUMP_ZONE: "JumpZone",
+	WAYPOINT_RADIUS: "Radius",
+
+	// Bot avoid waypoint attributes
+	AVOID_RADIUS: "AvoidRadius",
+	AVOID_STRENGTH: "AvoidStrength",
 } as const;
 
 // Type exports for type-safe string usage

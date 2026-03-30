@@ -35,8 +35,9 @@ critterball/
 │   ├── shared/                    # → ALL places
 │   │   ├── constants/
 │   │   │   ├── BallConfig.ts      # Ball physics/effects tuning
+│   │   │   ├── BotConfig.ts       # Bot AI tuning values
 │   │   │   ├── LobbyConfig.ts     # Maps, gamemodes, party settings
-│   │   │   ├── RaceConfig.ts      # Race laps, HUD styling, timers
+│   │   │   ├── RaceConfig.ts      # Race laps, HUD styling, timers, position UI
 │   │   │   ├── PlaceIds.ts        # AUTO-GENERATED from places.json
 │   │   │   ├── PartNames.ts       # Centralized part/instance names
 │   │   │   ├── UINames.ts         # UI element and effect names
@@ -44,8 +45,9 @@ critterball/
 │   │   │   └── InputActions.ts    # Input action names
 │   │   ├── types/
 │   │   │   ├── LobbyTypes.ts      # PartyState, PartyMember, etc.
-│   │   │   ├── RaceTypes.ts       # PlayerRaceState, RaceGameState enum
-│   │   │   └── GameTypes.ts       # GamemodeId enum, TeleportData
+│   │   │   ├── RaceTypes.ts       # PlayerRaceState, RaceGameState enum, RacePositionUpdate
+│   │   │   ├── GameTypes.ts       # GamemodeId enum, TeleportData
+│   │   │   └── BotTypes.ts        # BotState, BotDifficulty enum, BotWaypoint
 │   │   ├── utilities/
 │   │   │   ├── ColorUtils.ts      # RGB to Color3 conversion, lerp
 │   │   │   └── ConnectionManager.ts  # RBXScriptConnection cleanup utility
@@ -80,7 +82,11 @@ critterball/
 │       └── server/services/
 │           ├── CritterballService.ts
 │           ├── RaceService.ts           # Checkpoint validation, respawning
-│           └── GameModeService.ts       # Server gamemode, teleport data
+│           ├── GameModeService.ts       # Server gamemode, teleport data
+│           ├── BotService.ts            # Bot spawning and orchestration
+│           ├── BotNavigationService.ts  # Waypoint parsing, steering
+│           ├── BotPhysicsService.ts     # Bot movement simulation
+│           └── PositionService.ts       # Race position calculation
 │
 ├── assets/rbxm/                   # Roblox assets
 ├── build/                         # Generated .rbxl files (gitignored)
@@ -151,8 +157,7 @@ Ball-related functionality is split across focused controllers:
 - Animate script disabled
 
 ### Trail System
-- TrailAnchor part follows ball (doesn't rotate)
-- Uses AlignPosition + AlignOrientation constraints
+- TrailAnchor part welded to ball via WeldConstraint (reliable, won't disconnect)
 - Trail properties scale with speed (transparency, width, lifetime)
 - Peak speed tracking prevents abrupt trail changes when slowing
 
@@ -245,6 +250,64 @@ The ball's physics are owned by the client (`SetNetworkOwner(player)`). This mea
 - Server can't directly zero velocity (changes get overwritten)
 - Client must zero velocity when respawning
 - RigidConstraint between character and ball requires both to be teleported together
+
+### Bot System (Race Mode)
+
+Server-controlled AI racers that auto-fill races. Bots do NOT use `SetNetworkOwner()` - the server retains physics control.
+
+#### Architecture
+- **BotService** (orchestrator): Spawns bots, handles race integration, boost zones, bouncers, death barrier
+- **BotNavigationService**: Parses waypoint folders, calculates steering direction with obstacle avoidance
+- **BotPhysicsService**: Applies movement impulses, turn forces, jump logic (mirrors player physics)
+
+#### Key Differences from Player Balls
+- Server retains network ownership (no `SetNetworkOwner()` call)
+- Server applies impulses directly via `ApplyImpulse()`
+- Uses dedicated waypoints for navigation, race checkpoints for progress validation
+- Speed cap uses diminishing returns on bot's own impulses only - external forces (boosts, bouncers) can push past max speed
+
+#### Waypoint Types
+- **Navigate waypoints** (`BotWaypoints` tag): Positions bots seek toward
+- **Avoid waypoints** (`BotAvoidWaypoints` tag): Obstacle centers bots steer away from
+
+#### Difficulty Levels
+```typescript
+EASY:   70% speed, 70% max speed, 2x turn force
+MEDIUM: 85% speed, 80% max speed, 2.5x turn force
+HARD:   100% speed, 90% max speed, 3x turn force
+```
+
+#### Bot Spawning
+- Bots auto-spawn when race starts (STARTING state)
+- Fills up to `TARGET_RACER_COUNT` (default: 8) total racers
+- Random difficulty distribution: 30% easy, 40% medium, 30% hard
+
+### Position Tracking System
+
+Server-authoritative position calculation for all racers (players + bots).
+
+#### Components
+- **PositionService** (server): Calculates positions using race checkpoints, fires updates to clients
+- **RaceService** (server): Exposes `getCheckpointCount()` and `getCheckpointPosition()` for position calculation
+- **RaceUIController** (client): Displays position with animations
+
+#### Position Calculation
+Uses "last passed checkpoint" approach (not nearest waypoint) for accuracy on tracks with vertical overlaps:
+```
+score = (lap - 1) * checkpointCount + currentCheckpoint + distanceScore
+```
+
+Where:
+- `currentCheckpoint` = last checkpoint crossed (0, 1, 2, etc.) from player/bot race state
+- `distanceScore` = `1 - (horizontalDistanceToNextCheckpoint / 1000)`, clamped 0-1
+- Distance uses XZ plane only (ignores Y for vertical track overlaps)
+
+#### UI Features
+- Gold/silver/bronze colors for 1st/2nd/3rd place
+- Green flash when gaining position
+- Red flash when losing position
+- Pulse animation when moving up in position
+- Position displayed at bottom of race HUD (uses UIListLayout with SortOrder.LayoutOrder)
 
 ### Gamemode System
 
@@ -366,6 +429,17 @@ Race settings in `src/shared/constants/RaceConfig.ts`:
 - **COUNTDOWN**: Font size, colors for countdown numbers and "Race!" text
 - **FINISH_SCREEN**: Overlay transparency, title/time colors and sizes
 
+## Key Configuration (BotConfig.ts)
+
+Bot AI settings in `src/shared/constants/BotConfig.ts`:
+
+- **MAX_BOTS**: Maximum bots to spawn (default: 7)
+- **TARGET_RACER_COUNT**: Total racers including players (default: 8)
+- **BOT_SPAWN_DELAY**: Seconds between spawning each bot (default: 0.5)
+- **WAYPOINT_CAPTURE_RADIUS**: Distance to consider waypoint reached (default: 10)
+- **STUCK_DETECTION_TIME**: Seconds without progress before respawn (default: 3)
+- **DIFFICULTY**: Presets for EASY, MEDIUM, HARD (speed/turn multipliers)
+
 ## Key Configuration (LobbyConfig.ts)
 
 Lobby settings in `src/shared/constants/LobbyConfig.ts`:
@@ -400,6 +474,7 @@ RaceClientEvents (Server → Client):
   - countdownStarted(): void                        // Transition to countdown, start camera transition
   - gameStateChanged(state: RaceGameState): void    // State updates (waiting/starting/countdown/racing)
   - allPlayersLoaded(): void                        // All players loaded, hide "Waiting for players"
+  - positionUpdated(update: RacePositionUpdate): void  // Position in race (1st, 2nd, etc.)
 ```
 
 ### Game Network Events (game/shared/network.ts)
@@ -518,6 +593,34 @@ Workspace/
 ```
 
 The camera will parse the waypoint number from each Part's name and move between them smoothly.
+
+### Setting Up Bot Waypoints
+1. Create a **Folder** in Workspace named `BotWaypoints`
+2. **Tag the folder** with `BotWaypoints` (via CollectionService)
+3. Add **Part children** for each navigation point:
+   - Name with number suffix for ordering: `Waypoint1`, `Waypoint2`, etc.
+   - Set: `Anchored = true`, `Transparency = 1`, `CanCollide = false`
+   - Optional attribute `JumpZone = true` for gaps where bots should jump
+   - Optional attribute `Radius` to override waypoint capture radius (default: 10)
+
+4. (Optional) Create **avoid zones** for obstacles:
+   - Create Folder `BotAvoidWaypoints`, tag with `BotAvoidWaypoints`
+   - Add Part children at obstacle centers
+   - Optional attributes: `AvoidRadius` (default: 20), `AvoidStrength` (default: 1.0)
+
+```
+Workspace/
+├── BotWaypoints/               (Folder, tagged "BotWaypoints")
+│   ├── Waypoint1               (Part)
+│   ├── Waypoint2               (Part)
+│   ├── Waypoint3               (Part, JumpZone=true)
+│   └── ...
+└── BotAvoidWaypoints/          (Folder, tagged "BotAvoidWaypoints")
+    ├── Avoid1                  (Part, obstacle center)
+    └── Avoid2                  (Part)
+```
+
+**Note**: Bot waypoints are for navigation hints only. Bots validate race progress against checkpoints (same as players).
 
 ## Performance Notes
 
