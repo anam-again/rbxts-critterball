@@ -6,7 +6,7 @@ const LOG_PREFIX = "[GameModeController]";
 
 @Controller()
 export class GameModeController implements OnStart {
-	private gamemodeId: GamemodeId = "race"; // Default to race
+	private gamemodeId: GamemodeId = GamemodeId.RACE; // Default to race
 	private isReady = false;
 	private readyCallbacks: Array<(gamemodeId: GamemodeId) => void> = [];
 
@@ -34,11 +34,11 @@ export class GameModeController implements OnStart {
 	}
 
 	public isRaceMode(): boolean {
-		return this.gamemodeId === "race";
+		return this.gamemodeId === GamemodeId.RACE;
 	}
 
 	public isSandboxMode(): boolean {
-		return this.gamemodeId === "sandbox";
+		return this.gamemodeId === GamemodeId.SANDBOX;
 	}
 
 	public isGamemodeReady(): boolean {

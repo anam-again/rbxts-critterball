@@ -1,3 +1,5 @@
+import { rgbToColor3 } from "shared/utilities/ColorUtils";
+
 // Physics tuning constants for ball movement
 export const BallConfig = {
 	MOVE_IMPULSE_FORCE: 100000,
@@ -170,4 +172,19 @@ export const BallConfig = {
 	POWERUP_PICKUP_PARTICLE_SIZE: 1.5, // Peak particle size
 	POWERUP_PICKUP_PARTICLE_LIFETIME: 0.8, // Particle lifetime in seconds
 	POWERUP_PICKUP_PARTICLE_COLOR: [255, 200, 50] as const, // Golden yellow color (RGB 0-255)
+} as const;
+
+// Pre-computed Color3 values for boost zone colors (avoids repeated Color3 construction)
+export const BoostColors = {
+	BODY_IDLE: rgbToColor3(BallConfig.BOOST_BODY_COLOR_IDLE),
+	BODY_FLASH: rgbToColor3(BallConfig.BOOST_BODY_COLOR_FLASH),
+	OUTLINE_IDLE: rgbToColor3(BallConfig.BOOST_OUTLINE_COLOR_IDLE),
+	OUTLINE_FLASH: rgbToColor3(BallConfig.BOOST_OUTLINE_COLOR_FLASH),
+	ARROW_IDLE: rgbToColor3(BallConfig.BOOST_ARROW_COLOR_IDLE),
+	ARROW_FLASH: rgbToColor3(BallConfig.BOOST_ARROW_COLOR_FLASH),
+} as const;
+
+// Pre-computed Color3 for powerup particles
+export const PowerupColors = {
+	PICKUP_PARTICLE: rgbToColor3(BallConfig.POWERUP_PICKUP_PARTICLE_COLOR),
 } as const;

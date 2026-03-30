@@ -37,11 +37,18 @@ critterball/
 │   │   │   ├── BallConfig.ts      # Ball physics/effects tuning
 │   │   │   ├── LobbyConfig.ts     # Maps, gamemodes, party settings
 │   │   │   ├── RaceConfig.ts      # Race laps, HUD styling, timers
-│   │   │   └── PlaceIds.ts        # AUTO-GENERATED from places.json
+│   │   │   ├── PlaceIds.ts        # AUTO-GENERATED from places.json
+│   │   │   ├── PartNames.ts       # Centralized part/instance names
+│   │   │   ├── UINames.ts         # UI element and effect names
+│   │   │   ├── UIColors.ts        # Centralized UI colors
+│   │   │   └── InputActions.ts    # Input action names
 │   │   ├── types/
 │   │   │   ├── LobbyTypes.ts      # PartyState, PartyMember, etc.
-│   │   │   ├── RaceTypes.ts       # PlayerRaceState, SpawnData
-│   │   │   └── GameTypes.ts       # GamemodeId, TeleportData
+│   │   │   ├── RaceTypes.ts       # PlayerRaceState, RaceGameState enum
+│   │   │   └── GameTypes.ts       # GamemodeId enum, TeleportData
+│   │   ├── utilities/
+│   │   │   ├── ColorUtils.ts      # RGB to Color3 conversion, lerp
+│   │   │   └── ConnectionManager.ts  # RBXScriptConnection cleanup utility
 │   │   ├── network.ts
 │   │   └── globals.ts             # CollectionService tags
 │   │
@@ -58,14 +65,18 @@ critterball/
 │   └── game/                      # → GAME WORLDS ONLY
 │       ├── shared/
 │       │   └── network.ts         # Race + Game network events
-│       ├── client/controllers/
-│       │   ├── CritterballController.ts
-│       │   ├── BallCameraController.ts
-│       │   ├── SpeedometerController.ts
-│       │   ├── CheckpointController.ts  # Checkpoint detection, death barrier
-│       │   ├── RaceUIController.ts      # Race HUD, finish screen
-│       │   ├── GameModeController.ts    # Client gamemode state
-│       │   └── GameMenuController.ts    # In-game menu, return to lobby
+│       ├── client/
+│       │   ├── state/
+│       │   │   └── BallState.ts         # Shared ball state singleton
+│       │   └── controllers/
+│       │       ├── CritterballController.ts  # Main coordinator, input, interactions
+│       │       ├── BallEffectsController.ts  # Visual effects (trails, particles, camera)
+│       │       ├── BallCameraController.ts
+│       │       ├── SpeedometerController.ts
+│       │       ├── CheckpointController.ts  # Checkpoint detection, death barrier
+│       │       ├── RaceUIController.ts      # Race HUD, finish screen
+│       │       ├── GameModeController.ts    # Client gamemode state
+│       │       └── GameMenuController.ts    # In-game menu, return to lobby
 │       └── server/services/
 │           ├── CritterballService.ts
 │           ├── RaceService.ts           # Checkpoint validation, respawning
@@ -89,6 +100,41 @@ critterball/
 | `npm run release` | Full release: build + .rbxl + deploy all |
 | `npm run lint` | Run ESLint with auto-fix |
 
+## Code Architecture
+
+### Constants Pattern
+String literals, part names, UI names, and colors are centralized in `src/shared/constants/`:
+- `PartNames.ts`: All hardcoded part/instance names (e.g., "Sphere", "BoostZone")
+- `UINames.ts`: Screen GUI names, effect names, particle names
+- `UIColors.ts`: Pre-computed Color3 values for UI elements
+- `InputActions.ts`: Context action binding names
+
+### Type Safety
+Enums are used instead of string literal types for better type checking:
+- `RaceGameState` enum: WAITING, STARTING, COUNTDOWN, RACING
+- `GamemodeId` enum: RACE, SANDBOX
+
+### Shared State Pattern
+`BallState` singleton (`game/client/state/BallState.ts`) provides shared ball state across controllers:
+- Ball and sphere references
+- Game state (frozen, racing)
+- Velocity tracking
+- Raycast params
+- Ground detection
+
+**Note**: roblox-ts does not support JavaScript getters/setters. Use methods like `getBall()`, `setSphere()`.
+
+### Controller Organization
+Ball-related functionality is split across focused controllers:
+- `CritterballController`: Coordinator, input, boost zones, bouncers, powerups
+- `BallEffectsController`: Visual effects (trail, particles, camera effects, neon glow)
+- `BallCameraController`: Showcase camera, camera transitions
+- `CheckpointController`: Checkpoint detection, death barrier
+
+### Utilities
+- `ColorUtils.ts`: `rgbToColor3()`, `lerpRgb()` for color operations
+- `ConnectionManager.ts`: Helper for cleaning up RBXScriptConnections
+
 ## Core Systems
 
 ### Ball Movement (CritterballController)
@@ -110,7 +156,9 @@ critterball/
 - Trail properties scale with speed (transparency, width, lifetime)
 - Peak speed tracking prevents abrupt trail changes when slowing
 
-### Visual Effects
+### Visual Effects (BallEffectsController)
+
+All visual effects are managed by `BallEffectsController.ts`, which reads state from the `BallState` singleton.
 
 #### Impact Particles
 - Star texture particles on collisions
@@ -120,7 +168,7 @@ critterball/
 #### Rolling Dust
 - Particles emit from ground when rolling
 - Rate scales with speed
-- Color matches ground surface
+- Color matches ground surface (throttled raycast, 100ms interval)
 
 #### Screen Shake
 - Triggers on heavy impacts
@@ -131,6 +179,12 @@ critterball/
 - **FOV Shift**: Widens at speed (linear then diminishing returns)
 - **Trailing Camera**: Subtle lag behind movement direction
 - **Impact Blur**: Brief blur on heavy impacts
+- **Color Correction**: Saturation increases with speed
+
+#### Neon Glow
+- Ball glow part that responds to speed
+- Flashes on boost zone entry/bouncer hits
+- Lerps transparency smoothly
 
 ### Racing System (Game Worlds)
 
@@ -464,6 +518,17 @@ Workspace/
 ```
 
 The camera will parse the waypoint number from each Part's name and move between them smoothly.
+
+## Performance Notes
+
+### Throttled Operations
+Expensive per-frame operations are throttled:
+- **Rolling dust raycast**: 100ms interval (ground color detection)
+- **Boost zone overlap check**: 50ms interval (GetPartsInPart)
+
+### roblox-ts Limitations
+- **No getters/setters**: Use regular methods (`getX()`, `setX(value)`)
+- **No optional chaining in some contexts**: May need explicit undefined checks
 
 ## Validation
 The server validates ball and trail templates on startup with detailed error messages if misconfigured.

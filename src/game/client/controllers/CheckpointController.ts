@@ -5,6 +5,8 @@ import { TAGS } from "shared/globals";
 import { ClientEvents } from "game/client/network";
 import { RaceServerEvents, RaceClientEvents } from "game/client/network";
 import { GameModeController } from "./GameModeController";
+import { GamemodeId } from "shared/types/GameTypes";
+import { PART_NAMES, ATTRIBUTE_NAMES } from "shared/constants/PartNames";
 
 const LOG_PREFIX = "[CheckpointController]";
 
@@ -29,7 +31,7 @@ export class CheckpointController implements OnStart {
 
 		// Cache gamemode when ready
 		this.gameModeController.onGamemodeReady((gamemodeId) => {
-			this.isRaceMode = gamemodeId === "race";
+			this.isRaceMode = gamemodeId === GamemodeId.RACE;
 		});
 
 		// Listen for ball ready
@@ -53,9 +55,9 @@ export class CheckpointController implements OnStart {
 
 	private loadWorldConfig(): void {
 		// Read respawn barrier Y from Map folder attribute
-		const mapFolder = Workspace.FindFirstChild("Map") as Folder | undefined;
+		const mapFolder = Workspace.FindFirstChild(PART_NAMES.MAP) as Folder | undefined;
 		if (mapFolder) {
-			const barrierY = mapFolder.GetAttribute("RespawnBarrierY") as number | undefined;
+			const barrierY = mapFolder.GetAttribute(ATTRIBUTE_NAMES.RESPAWN_BARRIER_Y) as number | undefined;
 			if (barrierY !== undefined) {
 				this.respawnBarrierY = barrierY;
 				print(`${LOG_PREFIX} RespawnBarrierY attribute found: ${this.respawnBarrierY}`);
@@ -68,7 +70,7 @@ export class CheckpointController implements OnStart {
 	}
 
 	private onBallReady(ball: Model): void {
-		this.sphere = ball.FindFirstChild("Sphere") as BasePart;
+		this.sphere = ball.FindFirstChild(PART_NAMES.SPHERE) as BasePart;
 		this.isRespawning = false;
 	}
 
@@ -97,7 +99,7 @@ export class CheckpointController implements OnStart {
 			if (checkpointNumber === undefined) continue;
 
 			// Find the Checkpoint part inside the folder
-			const checkpointPart = child.FindFirstChild("Checkpoint") as BasePart | undefined;
+			const checkpointPart = child.FindFirstChild(PART_NAMES.CHECKPOINT) as BasePart | undefined;
 			if (!checkpointPart || !checkpointPart.IsA("BasePart")) continue;
 
 			const connection = checkpointPart.Touched.Connect((hit) => {

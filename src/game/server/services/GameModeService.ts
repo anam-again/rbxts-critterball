@@ -3,12 +3,13 @@ import { Players, RunService, TeleportService, Workspace } from "@rbxts/services
 import { GamemodeId, TeleportData } from "shared/types/GameTypes";
 import { PLACE_IDS } from "shared/constants/PlaceIds";
 import { GameServerEvents, GameClientEvents } from "game/server/network";
+import { PART_NAMES, ATTRIBUTE_NAMES } from "shared/constants/PartNames";
 
 const LOG_PREFIX = "[GameModeService]";
 
 @Service({ loadOrder: -1 }) // Load before RaceService
 export class GameModeService implements OnStart {
-	private gamemodeId: GamemodeId = "race"; // Default to race
+	private gamemodeId: GamemodeId = GamemodeId.RACE; // Default to race
 	private initialized = false;
 
 	onStart(): void {
@@ -80,16 +81,16 @@ export class GameModeService implements OnStart {
 	}
 
 	private readGamemodeFromMapAttribute(): GamemodeId | undefined {
-		const mapFolder = Workspace.FindFirstChild("Map") as Folder | undefined;
+		const mapFolder = Workspace.FindFirstChild(PART_NAMES.MAP) as Folder | undefined;
 		if (!mapFolder) return undefined;
 
-		const attribute = mapFolder.GetAttribute("DefaultGamemode") as string | undefined;
+		const attribute = mapFolder.GetAttribute(ATTRIBUTE_NAMES.DEFAULT_GAMEMODE) as string | undefined;
 		if (!attribute) return undefined;
 
 		// Normalize to lowercase and validate
-		const normalized = attribute.lower() as GamemodeId;
-		if (normalized === "race" || normalized === "sandbox") {
-			return normalized;
+		const normalized = attribute.lower();
+		if (normalized === GamemodeId.RACE || normalized === GamemodeId.SANDBOX) {
+			return normalized as GamemodeId;
 		}
 
 		warn(`${LOG_PREFIX} Invalid DefaultGamemode attribute value: "${attribute}". Use "race" or "sandbox".`);
@@ -102,7 +103,7 @@ export class GameModeService implements OnStart {
 
 		if (teleportData && teleportData.gamemodeId) {
 			// Validate the gamemode ID
-			if (teleportData.gamemodeId === "race" || teleportData.gamemodeId === "sandbox") {
+			if (teleportData.gamemodeId === GamemodeId.RACE || teleportData.gamemodeId === GamemodeId.SANDBOX) {
 				return teleportData.gamemodeId;
 			}
 		}
@@ -143,10 +144,10 @@ export class GameModeService implements OnStart {
 	}
 
 	public isRaceMode(): boolean {
-		return this.gamemodeId === "race";
+		return this.gamemodeId === GamemodeId.RACE;
 	}
 
 	public isSandboxMode(): boolean {
-		return this.gamemodeId === "sandbox";
+		return this.gamemodeId === GamemodeId.SANDBOX;
 	}
 }

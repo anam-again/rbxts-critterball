@@ -5,9 +5,9 @@ import { BallConfig } from "shared/constants/BallConfig";
 import { RaceConfig } from "shared/constants/RaceConfig";
 import { TAGS } from "shared/globals";
 import { RaceGameState } from "shared/types/RaceTypes";
+import { GamemodeId } from "shared/types/GameTypes";
 import { GameModeController } from "./GameModeController";
-
-const LOG_PREFIX = "[BallCameraController]";
+import { PART_NAMES } from "shared/constants/PartNames";
 
 @Controller()
 export class BallCameraController implements OnStart {
@@ -35,12 +35,9 @@ export class BallCameraController implements OnStart {
 	private readonly CAMERA_HEIGHT = 6;
 
 	onStart(): void {
-		print(`${LOG_PREFIX} Started`);
-
 		// Wait for gamemode to be ready before initializing camera behavior
 		this.gameModeController.onGamemodeReady((gamemodeId) => {
-			if (gamemodeId === "sandbox") {
-				print(`${LOG_PREFIX} Sandbox mode - skipping showcase camera`);
+			if (gamemodeId === GamemodeId.SANDBOX) {
 				this.cameraMode = "player";
 
 				// Just listen for ball ready to set camera subject
@@ -79,12 +76,11 @@ export class BallCameraController implements OnStart {
 		const waypointFolders = CollectionService.GetTagged(TAGS.SHOWCASE_CAMERA_WAYPOINTS);
 
 		if (waypointFolders.size() === 0) {
-			print(`${LOG_PREFIX} No ShowcaseCameraWaypoints folder found - showcase camera disabled`);
+			warn("[BallCameraController] No ShowcaseCameraWaypoints folder found - showcase camera disabled");
 			return;
 		}
 
 		const waypointsFolder = waypointFolders[0] as Folder;
-		print(`${LOG_PREFIX} Found waypoints folder: ${waypointsFolder.GetFullName()}`);
 
 		// Parse waypoint parts
 		const waypoints: Array<{ number: number; part: BasePart }> = [];
@@ -106,8 +102,6 @@ export class BallCameraController implements OnStart {
 		waypoints.sort((a, b) => a.number < b.number);
 		this.showcaseWaypoints = waypoints.map((w) => w.part);
 
-		print(`${LOG_PREFIX} Loaded ${this.showcaseWaypoints.size()} waypoints`);
-
 		// Initialize camera at first waypoint
 		if (this.showcaseWaypoints.size() > 0) {
 			this.currentShowcaseCFrame = this.showcaseWaypoints[0].CFrame;
@@ -122,7 +116,7 @@ export class BallCameraController implements OnStart {
 	}
 
 	private onBallReady(ball: Model): void {
-		const sphere = ball.FindFirstChild("Sphere") as BasePart;
+		const sphere = ball.FindFirstChild(PART_NAMES.SPHERE) as BasePart;
 		if (!sphere) return;
 
 		this.ballSphere = sphere;
@@ -131,23 +125,19 @@ export class BallCameraController implements OnStart {
 		if (this.cameraMode === "player") {
 			this.finalizePlayerCamera();
 		}
-
-		print(`${LOG_PREFIX} Ball ready`);
 	}
 
 	private onCountdownStarted(): void {
-		print(`${LOG_PREFIX} Countdown started - beginning camera transition`);
 		this.startCameraTransition();
 	}
 
 	private onGameStateChanged(state: RaceGameState): void {
-		print(`${LOG_PREFIX} Game state changed: ${state}`);
 
-		if (state === "countdown") {
+		if (state === RaceGameState.COUNTDOWN) {
 			if (this.cameraMode === "showcase") {
 				this.startCameraTransition();
 			}
-		} else if (state === "racing") {
+		} else if (state === RaceGameState.RACING) {
 			// Ensure we're in player mode when racing starts
 			if (this.cameraMode !== "player") {
 				this.finalizePlayerCamera();
@@ -163,8 +153,6 @@ export class BallCameraController implements OnStart {
 		this.transitionStartCFrame = this.camera.CFrame;
 		this.transitionProgress = 0;
 		this.transitionStartTime = tick();
-
-		print(`${LOG_PREFIX} Starting camera transition to player`);
 	}
 
 	private getTargetPlayerCFrame(): CFrame {
@@ -210,10 +198,6 @@ export class BallCameraController implements OnStart {
 			// Set zoom limits on the player
 			this.player.CameraMinZoomDistance = BallConfig.CAMERA_MIN_ZOOM;
 			this.player.CameraMaxZoomDistance = BallConfig.CAMERA_MAX_ZOOM;
-
-			print(`${LOG_PREFIX} Camera following ball`);
-		} else {
-			print(`${LOG_PREFIX} Ball not ready yet - will switch when ready`);
 		}
 	}
 
@@ -278,7 +262,6 @@ export class BallCameraController implements OnStart {
 
 		// Check if transition is complete
 		if (this.transitionProgress >= 1) {
-			print(`${LOG_PREFIX} Camera transition complete`);
 			this.finalizePlayerCamera();
 		}
 	}

@@ -1,3 +1,5 @@
+import { rgbToColor3 } from "shared/utilities/ColorUtils";
+
 // Race system configuration constants
 export const RaceConfig = {
 	TOTAL_LAPS: 3,
@@ -55,4 +57,18 @@ export const RaceConfig = {
 	FINISH_TIME_COLOR: [255, 255, 255] as const,
 	HUD_BACKGROUND_COLOR: [0, 0, 0] as const,
 	HUD_BACKGROUND_TRANSPARENCY: 0.5,
+} as const;
+
+// Pre-computed Color3 values for direct use (avoids repeated Color3 construction)
+export const RaceColors = {
+	TIMER: rgbToColor3(RaceConfig.TIMER_COLOR),
+	LAP_TIMER: rgbToColor3(RaceConfig.LAP_TIMER_COLOR),
+	LAP_COUNTER: rgbToColor3(RaceConfig.LAP_COUNTER_COLOR),
+	LAP_NOTIFICATION: rgbToColor3(RaceConfig.LAP_NOTIFICATION_COLOR),
+	FINISH_TITLE: rgbToColor3(RaceConfig.FINISH_TITLE_COLOR),
+	FINISH_TIME: rgbToColor3(RaceConfig.FINISH_TIME_COLOR),
+	HUD_BACKGROUND: rgbToColor3(RaceConfig.HUD_BACKGROUND_COLOR),
+	STATUS: rgbToColor3(RaceConfig.STATUS_COLOR),
+	COUNTDOWN: rgbToColor3(RaceConfig.COUNTDOWN_COLOR),
+	COUNTDOWN_GO: rgbToColor3(RaceConfig.COUNTDOWN_GO_COLOR),
 } as const;

@@ -5,6 +5,7 @@ import { PlayerRaceState, RaceGameState, SpawnData } from "shared/types/RaceType
 import { TAGS } from "shared/globals";
 import { RaceServerEvents, RaceClientEvents } from "game/server/network";
 import { GameModeService } from "./GameModeService";
+import { PART_NAMES, ATTRIBUTE_NAMES } from "shared/constants/PartNames";
 
 const LOG_PREFIX = "[RaceService]";
 
@@ -25,7 +26,7 @@ export class RaceService implements OnStart {
 	private nextSpawnIndex = 0;
 
 	// Race state management
-	private gameState: RaceGameState = "waiting";
+	private gameState: RaceGameState = RaceGameState.WAITING;
 	private loadedPlayers = new Set<Player>();
 	private showcaseStartTime = 0;
 	private countdownStartTime = 0;
@@ -46,7 +47,7 @@ export class RaceService implements OnStart {
 
 		if (isSandbox) {
 			// Sandbox mode: Set game state to racing immediately, skip race features
-			this.gameState = "racing";
+			this.gameState = RaceGameState.RACING;
 			print(`${LOG_PREFIX} Sandbox mode - skipping race initialization`);
 		} else {
 			// Race mode: Initialize showcase and race sequence
@@ -114,7 +115,7 @@ export class RaceService implements OnStart {
 	}
 
 	private onHeartbeat(): void {
-		if (this.gameState !== "waiting") return;
+		if (this.gameState !== RaceGameState.WAITING) return;
 
 		const elapsed = tick() - this.showcaseStartTime;
 
@@ -126,7 +127,7 @@ export class RaceService implements OnStart {
 	}
 
 	private onPlayerLoaded(player: Player): void {
-		if (this.gameState !== "waiting") return;
+		if (this.gameState !== RaceGameState.WAITING) return;
 
 		this.loadedPlayers.add(player);
 		print(`${LOG_PREFIX} Player loaded: ${player.Name} (${this.loadedPlayers.size()}/${Players.GetPlayers().size()})`);
@@ -135,7 +136,7 @@ export class RaceService implements OnStart {
 	}
 
 	private checkAllPlayersLoaded(): void {
-		if (this.gameState !== "waiting") return;
+		if (this.gameState !== RaceGameState.WAITING) return;
 
 		const allPlayers = Players.GetPlayers();
 		const allLoaded = allPlayers.every((p) => this.loadedPlayers.has(p));
@@ -157,7 +158,7 @@ export class RaceService implements OnStart {
 
 				// Schedule starting phase after min time
 				task.delay(remaining, () => {
-					if (this.gameState === "waiting") {
+					if (this.gameState === RaceGameState.WAITING) {
 						this.startStartingPhase();
 					}
 				});
@@ -166,15 +167,15 @@ export class RaceService implements OnStart {
 	}
 
 	private startStartingPhase(): void {
-		if (this.gameState !== "waiting") return;
+		if (this.gameState !== RaceGameState.WAITING) return;
 
-		this.gameState = "starting";
+		this.gameState = RaceGameState.STARTING;
 
 		print(`${LOG_PREFIX} Starting phase - "Race about to start" for ${RaceConfig.STARTING_DURATION}s`);
 
 		// Notify all clients of starting phase
 		for (const player of Players.GetPlayers()) {
-			RaceClientEvents.gameStateChanged.fire(player, "starting");
+			RaceClientEvents.gameStateChanged.fire(player, RaceGameState.STARTING);
 		}
 
 		// Schedule countdown after starting duration
@@ -184,9 +185,9 @@ export class RaceService implements OnStart {
 	}
 
 	private startCountdown(): void {
-		if (this.gameState !== "starting") return;
+		if (this.gameState !== RaceGameState.STARTING) return;
 
-		this.gameState = "countdown";
+		this.gameState = RaceGameState.COUNTDOWN;
 		this.countdownStartTime = tick();
 
 		print(`${LOG_PREFIX} Countdown started`);
@@ -194,7 +195,7 @@ export class RaceService implements OnStart {
 		// Notify all clients
 		for (const player of Players.GetPlayers()) {
 			RaceClientEvents.countdownStarted.fire(player);
-			RaceClientEvents.gameStateChanged.fire(player, "countdown");
+			RaceClientEvents.gameStateChanged.fire(player, RaceGameState.COUNTDOWN);
 		}
 
 		// Freeze all balls (should already be frozen, but ensure it)
@@ -211,9 +212,9 @@ export class RaceService implements OnStart {
 	}
 
 	private startRace(): void {
-		if (this.gameState !== "countdown") return;
+		if (this.gameState !== RaceGameState.COUNTDOWN) return;
 
-		this.gameState = "racing";
+		this.gameState = RaceGameState.RACING;
 		this.raceStartTime = tick();
 
 		print(`${LOG_PREFIX} Race started!`);
@@ -229,12 +230,12 @@ export class RaceService implements OnStart {
 			if (state) {
 				state.raceStartTime = this.raceStartTime;
 				state.lapStartTime = this.raceStartTime;
-				state.gameState = "racing";
+				state.gameState = RaceGameState.RACING;
 				RaceClientEvents.raceStateUpdated.fire(player, state);
 			}
 
 			RaceClientEvents.raceStarted.fire(player, this.raceStartTime);
-			RaceClientEvents.gameStateChanged.fire(player, "racing");
+			RaceClientEvents.gameStateChanged.fire(player, RaceGameState.RACING);
 		}
 	}
 
@@ -263,7 +264,7 @@ export class RaceService implements OnStart {
 			}
 
 			// Find the checkpoint part (trigger zone)
-			const checkpointPart = child.FindFirstChild("Checkpoint") as BasePart | undefined;
+			const checkpointPart = child.FindFirstChild(PART_NAMES.CHECKPOINT) as BasePart | undefined;
 			if (!checkpointPart || !checkpointPart.IsA("BasePart")) {
 				warn(`${LOG_PREFIX} Checkpoint folder "${child.Name}" missing "Checkpoint" part, skipping`);
 				continue;
@@ -296,9 +297,9 @@ export class RaceService implements OnStart {
 		print(`${LOG_PREFIX} Loaded ${this.totalCheckpoints} checkpoints`);
 
 		// Read respawn barrier Y from Map folder attribute
-		const mapFolder = Workspace.FindFirstChild("Map") as Folder | undefined;
+		const mapFolder = Workspace.FindFirstChild(PART_NAMES.MAP) as Folder | undefined;
 		if (mapFolder) {
-			const barrierY = mapFolder.GetAttribute("RespawnBarrierY") as number | undefined;
+			const barrierY = mapFolder.GetAttribute(ATTRIBUTE_NAMES.RESPAWN_BARRIER_Y) as number | undefined;
 			if (barrierY !== undefined) {
 				this.respawnBarrierY = barrierY;
 				print(`${LOG_PREFIX} RespawnBarrierY attribute found: ${this.respawnBarrierY}`);

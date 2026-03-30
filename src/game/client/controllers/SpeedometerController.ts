@@ -2,6 +2,8 @@ import { Controller, OnStart } from "@flamework/core";
 import { Players, RunService } from "@rbxts/services";
 import { BallConfig } from "shared/constants/BallConfig";
 import { ClientEvents } from "game/client/network";
+import { PART_NAMES } from "shared/constants/PartNames";
+import { SCREEN_GUI_NAMES } from "shared/constants/UINames";
 
 @Controller()
 export class SpeedometerController implements OnStart {
@@ -55,7 +57,7 @@ export class SpeedometerController implements OnStart {
 
 		// Listen for ball ready event
 		ClientEvents.ballReady.connect((ball) => {
-			this.sphere = ball.FindFirstChild("Sphere") as BasePart;
+			this.sphere = ball.FindFirstChild(PART_NAMES.SPHERE) as BasePart;
 			if (this.sphere) {
 				this.previousVelocity = this.sphere.AssemblyLinearVelocity;
 			}
@@ -70,7 +72,7 @@ export class SpeedometerController implements OnStart {
 
 		// Create ScreenGui
 		const screenGui = new Instance("ScreenGui");
-		screenGui.Name = "SpeedometerGui";
+		screenGui.Name = SCREEN_GUI_NAMES.SPEEDOMETER_GUI;
 		screenGui.ResetOnSpawn = false;
 		screenGui.IgnoreGuiInset = true;
 		screenGui.Parent = playerGui;

@@ -76,7 +76,19 @@ npm install
 src/
 ├── shared/           # Shared across all places
 │   ├── constants/
-│   │   └── BallConfig.ts
+│   │   ├── BallConfig.ts     # Ball physics/effects tuning
+│   │   ├── RaceConfig.ts     # Race settings, UI colors
+│   │   ├── LobbyConfig.ts    # Maps, gamemodes, party settings
+│   │   ├── PartNames.ts      # Centralized part names
+│   │   ├── UINames.ts        # UI element names
+│   │   ├── UIColors.ts       # Pre-computed UI colors
+│   │   └── InputActions.ts   # Input binding names
+│   ├── utilities/
+│   │   ├── ColorUtils.ts     # RGB to Color3 helpers
+│   │   └── ConnectionManager.ts
+│   ├── types/
+│   │   ├── RaceTypes.ts      # RaceGameState enum
+│   │   └── GameTypes.ts      # GamemodeId enum
 │   ├── network.ts
 │   └── globals.ts
 ├── lobby/            # Lobby place only
@@ -89,11 +101,14 @@ src/
 └── game/             # Game worlds only
     ├── client/
     │   ├── runtime.client.ts
-    │   ├── network.ts
+    │   ├── state/
+    │   │   └── BallState.ts  # Shared ball state singleton
     │   └── controllers/
+    │       ├── CritterballController.ts   # Input, interactions
+    │       ├── BallEffectsController.ts   # Visual effects
+    │       └── ...
     └── server/
         ├── runtime.server.ts
-        ├── network.ts
         └── services/
 ```
 

@@ -1,9 +1,11 @@
 import { Controller, OnStart, Dependency } from "@flamework/core";
 import { Players, RunService, TweenService } from "@rbxts/services";
-import { RaceConfig } from "shared/constants/RaceConfig";
+import { RaceConfig, RaceColors } from "shared/constants/RaceConfig";
 import { PlayerRaceState, RaceGameState } from "shared/types/RaceTypes";
+import { GamemodeId } from "shared/types/GameTypes";
 import { RaceClientEvents } from "game/client/network";
 import { GameModeController } from "./GameModeController";
+import { SCREEN_GUI_NAMES } from "shared/constants/UINames";
 
 const LOG_PREFIX = "[RaceUIController]";
 
@@ -15,7 +17,7 @@ export class RaceUIController implements OnStart {
 
 	private raceState?: PlayerRaceState;
 	private previousLap = 1;
-	private gameState: RaceGameState = "waiting";
+	private gameState: RaceGameState = RaceGameState.WAITING;
 
 	// UI references
 	private screenGui?: ScreenGui;
@@ -36,7 +38,7 @@ export class RaceUIController implements OnStart {
 
 		// Wait for gamemode to be ready before initializing UI
 		this.gameModeController.onGamemodeReady((gamemodeId) => {
-			if (gamemodeId === "sandbox") {
+			if (gamemodeId === GamemodeId.SANDBOX) {
 				print(`${LOG_PREFIX} Sandbox mode - skipping race UI`);
 				return;
 			}
@@ -87,9 +89,9 @@ export class RaceUIController implements OnStart {
 			this.gameState = state;
 
 			// Update status label based on state
-			if (state === "waiting") {
+			if (state === RaceGameState.WAITING) {
 				this.updateStatusText("waiting");
-			} else if (state === "starting") {
+			} else if (state === RaceGameState.STARTING) {
 				this.updateStatusText("starting");
 			}
 		});
@@ -124,7 +126,7 @@ export class RaceUIController implements OnStart {
 	private createRaceUI(): void {
 		// Create ScreenGui
 		this.screenGui = new Instance("ScreenGui");
-		this.screenGui.Name = "RaceUI";
+		this.screenGui.Name = SCREEN_GUI_NAMES.RACE_UI;
 		this.screenGui.ResetOnSpawn = false;
 		this.screenGui.IgnoreGuiInset = true;
 		this.screenGui.Parent = this.playerGui;
@@ -136,11 +138,7 @@ export class RaceUIController implements OnStart {
 		this.hudFrame.Position = new UDim2(1, -RaceConfig.RACE_HUD_RIGHT_OFFSET, 0, RaceConfig.RACE_HUD_TOP_OFFSET);
 		this.hudFrame.Size = new UDim2(0, RaceConfig.RACE_HUD_WIDTH, 0, 0); // Auto-size height
 		this.hudFrame.AutomaticSize = Enum.AutomaticSize.Y;
-		this.hudFrame.BackgroundColor3 = new Color3(
-			RaceConfig.HUD_BACKGROUND_COLOR[0] / 255,
-			RaceConfig.HUD_BACKGROUND_COLOR[1] / 255,
-			RaceConfig.HUD_BACKGROUND_COLOR[2] / 255,
-		);
+		this.hudFrame.BackgroundColor3 = RaceColors.HUD_BACKGROUND;
 		this.hudFrame.BackgroundTransparency = RaceConfig.HUD_BACKGROUND_TRANSPARENCY;
 		this.hudFrame.BorderSizePixel = 0;
 		this.hudFrame.Parent = this.screenGui;
@@ -173,11 +171,7 @@ export class RaceUIController implements OnStart {
 		this.totalTimeLabel.BackgroundTransparency = 1;
 		this.totalTimeLabel.Font = Enum.Font.RobotoMono;
 		this.totalTimeLabel.TextSize = RaceConfig.TIMER_FONT_SIZE;
-		this.totalTimeLabel.TextColor3 = new Color3(
-			RaceConfig.TIMER_COLOR[0] / 255,
-			RaceConfig.TIMER_COLOR[1] / 255,
-			RaceConfig.TIMER_COLOR[2] / 255,
-		);
+		this.totalTimeLabel.TextColor3 = RaceColors.TIMER;
 		this.totalTimeLabel.TextXAlignment = Enum.TextXAlignment.Right;
 		this.totalTimeLabel.Text = "00:00.00";
 		this.totalTimeLabel.Parent = this.hudFrame;
@@ -189,11 +183,7 @@ export class RaceUIController implements OnStart {
 		this.lapTimeLabel.BackgroundTransparency = 1;
 		this.lapTimeLabel.Font = Enum.Font.RobotoMono;
 		this.lapTimeLabel.TextSize = RaceConfig.LAP_TIMER_FONT_SIZE;
-		this.lapTimeLabel.TextColor3 = new Color3(
-			RaceConfig.LAP_TIMER_COLOR[0] / 255,
-			RaceConfig.LAP_TIMER_COLOR[1] / 255,
-			RaceConfig.LAP_TIMER_COLOR[2] / 255,
-		);
+		this.lapTimeLabel.TextColor3 = RaceColors.LAP_TIMER;
 		this.lapTimeLabel.TextXAlignment = Enum.TextXAlignment.Right;
 		this.lapTimeLabel.Text = "Lap: 00:00.00";
 		this.lapTimeLabel.Parent = this.hudFrame;
@@ -205,11 +195,7 @@ export class RaceUIController implements OnStart {
 		this.lapCounterLabel.BackgroundTransparency = 1;
 		this.lapCounterLabel.Font = Enum.Font.RobotoMono;
 		this.lapCounterLabel.TextSize = RaceConfig.LAP_COUNTER_FONT_SIZE;
-		this.lapCounterLabel.TextColor3 = new Color3(
-			RaceConfig.LAP_COUNTER_COLOR[0] / 255,
-			RaceConfig.LAP_COUNTER_COLOR[1] / 255,
-			RaceConfig.LAP_COUNTER_COLOR[2] / 255,
-		);
+		this.lapCounterLabel.TextColor3 = RaceColors.LAP_COUNTER;
 		this.lapCounterLabel.TextXAlignment = Enum.TextXAlignment.Right;
 		this.lapCounterLabel.Text = "Lap 1/3";
 		this.lapCounterLabel.Parent = this.hudFrame;
@@ -254,11 +240,7 @@ export class RaceUIController implements OnStart {
 		this.lapNotificationLabel.BackgroundTransparency = 1;
 		this.lapNotificationLabel.Font = Enum.Font.GothamBold;
 		this.lapNotificationLabel.TextSize = RaceConfig.LAP_NOTIFICATION_FONT_SIZE;
-		this.lapNotificationLabel.TextColor3 = new Color3(
-			RaceConfig.LAP_NOTIFICATION_COLOR[0] / 255,
-			RaceConfig.LAP_NOTIFICATION_COLOR[1] / 255,
-			RaceConfig.LAP_NOTIFICATION_COLOR[2] / 255,
-		);
+		this.lapNotificationLabel.TextColor3 = RaceColors.LAP_NOTIFICATION;
 		this.lapNotificationLabel.TextStrokeTransparency = 0.5;
 		this.lapNotificationLabel.TextStrokeColor3 = new Color3(0, 0, 0);
 		this.lapNotificationLabel.Text = "";
@@ -345,11 +327,7 @@ export class RaceUIController implements OnStart {
 		finishTitle.BackgroundTransparency = 1;
 		finishTitle.Font = Enum.Font.GothamBold;
 		finishTitle.TextSize = RaceConfig.FINISH_TITLE_FONT_SIZE;
-		finishTitle.TextColor3 = new Color3(
-			RaceConfig.FINISH_TITLE_COLOR[0] / 255,
-			RaceConfig.FINISH_TITLE_COLOR[1] / 255,
-			RaceConfig.FINISH_TITLE_COLOR[2] / 255,
-		);
+		finishTitle.TextColor3 = RaceColors.FINISH_TITLE;
 		finishTitle.Text = "FINISH!";
 		finishTitle.Parent = this.finishOverlay;
 
@@ -363,11 +341,7 @@ export class RaceUIController implements OnStart {
 		this.finishTimeLabel.BackgroundTransparency = 1;
 		this.finishTimeLabel.Font = Enum.Font.RobotoMono;
 		this.finishTimeLabel.TextSize = RaceConfig.FINISH_TIME_FONT_SIZE;
-		this.finishTimeLabel.TextColor3 = new Color3(
-			RaceConfig.FINISH_TIME_COLOR[0] / 255,
-			RaceConfig.FINISH_TIME_COLOR[1] / 255,
-			RaceConfig.FINISH_TIME_COLOR[2] / 255,
-		);
+		this.finishTimeLabel.TextColor3 = RaceColors.FINISH_TIME;
 		this.finishTimeLabel.Text = "00:00.00";
 		this.finishTimeLabel.Parent = this.finishOverlay;
 
@@ -412,11 +386,7 @@ export class RaceUIController implements OnStart {
 		this.countdownLabel.BackgroundTransparency = 1;
 		this.countdownLabel.Font = Enum.Font.GothamBold;
 		this.countdownLabel.TextSize = RaceConfig.COUNTDOWN_FONT_SIZE;
-		this.countdownLabel.TextColor3 = new Color3(
-			RaceConfig.COUNTDOWN_COLOR[0] / 255,
-			RaceConfig.COUNTDOWN_COLOR[1] / 255,
-			RaceConfig.COUNTDOWN_COLOR[2] / 255,
-		);
+		this.countdownLabel.TextColor3 = RaceColors.COUNTDOWN;
 		this.countdownLabel.TextStrokeTransparency = 0.3;
 		this.countdownLabel.TextStrokeColor3 = new Color3(0, 0, 0);
 		this.countdownLabel.Text = "";
@@ -450,11 +420,7 @@ export class RaceUIController implements OnStart {
 
 		// Set text and color
 		this.countdownLabel.Text = tostring(num);
-		this.countdownLabel.TextColor3 = new Color3(
-			RaceConfig.COUNTDOWN_COLOR[0] / 255,
-			RaceConfig.COUNTDOWN_COLOR[1] / 255,
-			RaceConfig.COUNTDOWN_COLOR[2] / 255,
-		);
+		this.countdownLabel.TextColor3 = RaceColors.COUNTDOWN;
 
 		// Reset state for animation
 		this.countdownLabel.TextTransparency = 0;
@@ -481,11 +447,7 @@ export class RaceUIController implements OnStart {
 
 		// Set text to "Race!" with gold color
 		this.countdownLabel.Text = RaceConfig.COUNTDOWN_GO_TEXT;
-		this.countdownLabel.TextColor3 = new Color3(
-			RaceConfig.COUNTDOWN_GO_COLOR[0] / 255,
-			RaceConfig.COUNTDOWN_GO_COLOR[1] / 255,
-			RaceConfig.COUNTDOWN_GO_COLOR[2] / 255,
-		);
+		this.countdownLabel.TextColor3 = RaceColors.COUNTDOWN_GO;
 
 		// Reset state for animation
 		this.countdownLabel.TextTransparency = 0;
@@ -532,11 +494,7 @@ export class RaceUIController implements OnStart {
 		this.statusLabel.BackgroundTransparency = 1;
 		this.statusLabel.Font = Enum.Font.GothamBold;
 		this.statusLabel.TextSize = RaceConfig.STATUS_FONT_SIZE;
-		this.statusLabel.TextColor3 = new Color3(
-			RaceConfig.STATUS_COLOR[0] / 255,
-			RaceConfig.STATUS_COLOR[1] / 255,
-			RaceConfig.STATUS_COLOR[2] / 255,
-		);
+		this.statusLabel.TextColor3 = RaceColors.STATUS;
 		this.statusLabel.TextStrokeTransparency = 0.5;
 		this.statusLabel.TextStrokeColor3 = new Color3(0, 0, 0);
 		this.statusLabel.Text = "";
@@ -576,7 +534,7 @@ export class RaceUIController implements OnStart {
 
 	private updateTimers(): void {
 		// Only update timers when race is running
-		if (this.gameState !== "racing") return;
+		if (this.gameState !== RaceGameState.RACING) return;
 		if (!this.raceState || this.raceState.isFinished) return;
 		if (this.raceState.raceStartTime === 0) return;
 

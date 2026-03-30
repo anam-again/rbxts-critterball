@@ -4,11 +4,13 @@ import { BallConfig } from "shared/constants/BallConfig";
 import { ServerEvents } from "game/server/network";
 import { RaceService } from "./RaceService";
 import { GameModeService } from "./GameModeService";
+import { RaceGameState } from "shared/types/RaceTypes";
+import { PART_NAMES } from "shared/constants/PartNames";
 
 @Service()
 export class CritterballService implements OnStart {
-	private ballsFolder = ReplicatedStorage.WaitForChild("Balls") as Folder;
-	private trailsFolder = ReplicatedStorage.WaitForChild("Trails") as Folder;
+	private ballsFolder = ReplicatedStorage.WaitForChild(PART_NAMES.BALLS) as Folder;
+	private trailsFolder = ReplicatedStorage.WaitForChild(PART_NAMES.TRAILS) as Folder;
 	private raceService = Dependency<RaceService>();
 	private gameModeService = Dependency<GameModeService>();
 
@@ -62,17 +64,17 @@ export class CritterballService implements OnStart {
 			return false;
 		}
 
-		const sphere = ballTemplate.FindFirstChild("Sphere");
+		const sphere = ballTemplate.FindFirstChild(PART_NAMES.SPHERE);
 		if (!sphere) {
-			warn(`[BallModel Error] Ball template "${ballName}" missing required child: "Sphere"`);
+			warn(`[BallModel Error] Ball template "${ballName}" missing required child: "${PART_NAMES.SPHERE}"`);
 			warn(`  Expected structure:`);
 			warn(`    ${ballName}/ (Model)`);
-			warn(`      Sphere (Part - the main physics ball)`);
+			warn(`      ${PART_NAMES.SPHERE} (Part - the main physics ball)`);
 			return false;
 		}
 
 		if (!sphere.IsA("BasePart")) {
-			warn(`[BallModel Error] "Sphere" in "${ballName}" must be a BasePart, got ${sphere.ClassName}`);
+			warn(`[BallModel Error] "${PART_NAMES.SPHERE}" in "${ballName}" must be a BasePart, got ${sphere.ClassName}`);
 			return false;
 		}
 
@@ -159,9 +161,9 @@ export class CritterballService implements OnStart {
 
 	private onCharacterAdded(player: Player, character: Model): void {
 		// Wait for humanoid to load
-		const humanoid = character.WaitForChild("Humanoid") as Humanoid;
-		humanoid.WaitForChild("Animator");
-		character.WaitForChild("HumanoidRootPart");
+		const humanoid = character.WaitForChild(PART_NAMES.HUMANOID) as Humanoid;
+		humanoid.WaitForChild(PART_NAMES.ANIMATOR);
+		character.WaitForChild(PART_NAMES.HUMANOID_ROOT_PART);
 
 		// Small delay to ensure everything is ready
 		task.wait(0.1);
@@ -176,8 +178,8 @@ export class CritterballService implements OnStart {
 		const character = player.Character;
 		if (!character) return;
 
-		const humanoidRootPart = character.FindFirstChild("HumanoidRootPart") as BasePart | undefined;
-		const humanoid = character.FindFirstChild("Humanoid") as Humanoid | undefined;
+		const humanoidRootPart = character.FindFirstChild(PART_NAMES.HUMANOID_ROOT_PART) as BasePart | undefined;
+		const humanoid = character.FindFirstChild(PART_NAMES.HUMANOID) as Humanoid | undefined;
 		if (!humanoidRootPart || !humanoid) return;
 
 		// Check if player already has a ball
@@ -198,9 +200,9 @@ export class CritterballService implements OnStart {
 		ball.Name = `Ball_${player.UserId}`;
 
 		// Find the sphere part
-		const sphere = ball.FindFirstChild("Sphere") as BasePart | undefined;
+		const sphere = ball.FindFirstChild(PART_NAMES.SPHERE) as BasePart | undefined;
 		if (!sphere) {
-			warn(`[BallModel Error] Cannot spawn ball - "Sphere" part missing from template`);
+			warn(`[BallModel Error] Cannot spawn ball - "${PART_NAMES.SPHERE}" part missing from template`);
 			ball.Destroy();
 			return;
 		}
@@ -246,7 +248,7 @@ export class CritterballService implements OnStart {
 		// In sandbox mode, balls spawn unfrozen immediately
 		if (this.gameModeService.isRaceMode()) {
 			const gameState = this.raceService.getGameState();
-			if (gameState === "waiting" || gameState === "countdown") {
+			if (gameState === RaceGameState.WAITING || gameState === RaceGameState.COUNTDOWN) {
 				sphere.Anchored = true;
 				print(`Ball spawned frozen for player: ${player.Name} (state: ${gameState})`);
 			} else {
@@ -273,17 +275,17 @@ export class CritterballService implements OnStart {
 
 		// Create attachment at ball center
 		const ballAttachment = new Instance("Attachment");
-		ballAttachment.Name = "BallAttachment";
+		ballAttachment.Name = PART_NAMES.BALL_ATTACHMENT;
 		ballAttachment.Parent = sphere;
 
 		// Create attachment on HumanoidRootPart
 		const charAttachment = new Instance("Attachment");
-		charAttachment.Name = "CharacterAttachment";
+		charAttachment.Name = PART_NAMES.CHARACTER_ATTACHMENT;
 		charAttachment.Parent = humanoidRootPart;
 
 		// Connect with RigidConstraint
 		const constraint = new Instance("RigidConstraint");
-		constraint.Name = "BallConstraint";
+		constraint.Name = PART_NAMES.BALL_CONSTRAINT;
 		constraint.Attachment0 = ballAttachment;
 		constraint.Attachment1 = charAttachment;
 		constraint.Parent = sphere;
@@ -292,7 +294,7 @@ export class CritterballService implements OnStart {
 		humanoid.PlatformStand = true;
 
 		// Disable the Animate script if it exists
-		const animate = character.FindFirstChild("Animate");
+		const animate = character.FindFirstChild(PART_NAMES.ANIMATE);
 		if (animate && animate.IsA("LocalScript")) {
 			animate.Enabled = false;
 		}
@@ -311,7 +313,7 @@ export class CritterballService implements OnStart {
 	private applyReducedGravity(sphere: BasePart): void {
 		// Create attachment for the VectorForce
 		const attachment = new Instance("Attachment");
-		attachment.Name = "GravityAttachment";
+		attachment.Name = PART_NAMES.GRAVITY_ATTACHMENT;
 		attachment.Parent = sphere;
 
 		// Calculate upward force to counteract some gravity
@@ -322,7 +324,7 @@ export class CritterballService implements OnStart {
 
 		// Create VectorForce
 		const vectorForce = new Instance("VectorForce");
-		vectorForce.Name = "GravityReduction";
+		vectorForce.Name = PART_NAMES.GRAVITY_REDUCTION;
 		vectorForce.Attachment0 = attachment;
 		vectorForce.Force = new Vector3(0, upwardForce, 0);
 		vectorForce.RelativeTo = Enum.ActuatorRelativeTo.World;
@@ -342,7 +344,7 @@ export class CritterballService implements OnStart {
 
 		// Create invisible anchor part that follows the ball but doesn't rotate
 		const trailAnchor = new Instance("Part");
-		trailAnchor.Name = "TrailAnchor";
+		trailAnchor.Name = PART_NAMES.TRAIL_ANCHOR;
 		trailAnchor.Size = new Vector3(1, 1, 1);
 		trailAnchor.Transparency = 1;
 		trailAnchor.CanCollide = false;
@@ -355,17 +357,17 @@ export class CritterballService implements OnStart {
 
 		// Create attachment on sphere for AlignPosition
 		const sphereAttachment = new Instance("Attachment");
-		sphereAttachment.Name = "TrailFollowAttachment";
+		sphereAttachment.Name = PART_NAMES.TRAIL_FOLLOW_ATTACHMENT;
 		sphereAttachment.Parent = sphere;
 
 		// Create attachment on trail anchor
 		const anchorAttachment = new Instance("Attachment");
-		anchorAttachment.Name = "TrailAnchorAttachment";
+		anchorAttachment.Name = PART_NAMES.TRAIL_ANCHOR_ATTACHMENT;
 		anchorAttachment.Parent = trailAnchor;
 
 		// AlignPosition to follow the ball
 		const alignPosition = new Instance("AlignPosition");
-		alignPosition.Name = "TrailAlignPosition";
+		alignPosition.Name = PART_NAMES.TRAIL_ALIGN_POSITION;
 		alignPosition.Attachment0 = anchorAttachment;
 		alignPosition.Attachment1 = sphereAttachment;
 		alignPosition.MaxForce = 1000000;
@@ -375,7 +377,7 @@ export class CritterballService implements OnStart {
 
 		// AlignOrientation to stay upright (world space)
 		const alignOrientation = new Instance("AlignOrientation");
-		alignOrientation.Name = "TrailAlignOrientation";
+		alignOrientation.Name = PART_NAMES.TRAIL_ALIGN_ORIENTATION;
 		alignOrientation.Attachment0 = anchorAttachment;
 		alignOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment;
 		alignOrientation.CFrame = new CFrame(); // World upright
@@ -395,7 +397,7 @@ export class CritterballService implements OnStart {
 	private applyTrailTemplate(trailAnchor: Part, trailTemplate: Folder): void {
 		// Remove existing trail components
 		for (const child of trailAnchor.GetChildren()) {
-			if (child.IsA("Trail") || (child.IsA("Attachment") && child.Name !== "TrailAnchorAttachment")) {
+			if (child.IsA("Trail") || (child.IsA("Attachment") && child.Name !== PART_NAMES.TRAIL_ANCHOR_ATTACHMENT)) {
 				child.Destroy();
 			}
 		}
@@ -439,7 +441,7 @@ export class CritterballService implements OnStart {
 		const ball = Workspace.FindFirstChild(`Ball_${player.UserId}`) as Model | undefined;
 		if (!ball) return;
 
-		const sphere = ball.FindFirstChild("Sphere") as BasePart | undefined;
+		const sphere = ball.FindFirstChild(PART_NAMES.SPHERE) as BasePart | undefined;
 		if (!sphere) return;
 
 		const character = player.Character;
@@ -465,7 +467,7 @@ export class CritterballService implements OnStart {
 		const ball = Workspace.FindFirstChild(`Ball_${player.UserId}`) as Model | undefined;
 		if (!ball) return;
 
-		const sphere = ball.FindFirstChild("Sphere") as BasePart | undefined;
+		const sphere = ball.FindFirstChild(PART_NAMES.SPHERE) as BasePart | undefined;
 		if (!sphere) return;
 
 		// Anchor the sphere to freeze it, unanchor to unfreeze
