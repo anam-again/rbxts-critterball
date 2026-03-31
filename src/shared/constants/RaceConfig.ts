@@ -56,6 +56,22 @@ export const RaceConfig = {
 	POSITION_PULSE_SCALE: 1.15, // Scale when pulsing on position gain
 	POSITION_PULSE_DURATION: 0.2, // Duration of pulse animation
 
+	// Leaderboard UI
+	LEADERBOARD_SHOW_DELAY: 5, // Seconds after race start to show HUD and leaderboard
+	LEADERBOARD_FADE_DURATION: 0.3, // Fade in animation time
+	LEADERBOARD_ROW_HEIGHT: 32, // Height of each racer row
+	LEADERBOARD_MAX_RACERS: 8, // Fixed number of rows to display (matches TARGET_RACER_COUNT)
+	LEADERBOARD_POSITION_TWEEN_TIME: 0.3, // Row position animation time
+	LEADERBOARD_WIDTH: 280, // Same as HUD width
+	LEADERBOARD_GAP_FROM_HUD: 16, // Gap between HUD and leaderboard
+	LEADERBOARD_NAME_MAX_LENGTH: 12, // Truncate names longer than this
+	LEADERBOARD_LOCAL_PLAYER_BG: [40, 60, 100] as const, // Subtle blue background for local player
+	LEADERBOARD_POSITION_WIDTH: 30, // Width reserved for position number
+	LEADERBOARD_CORNER_RADIUS: 8,
+	LEADERBOARD_PADDING: 12,
+	LEADERBOARD_POSITION_FONT_SIZE: 18,
+	LEADERBOARD_NAME_FONT_SIZE: 16,
+
 	// Colors (RGB 0-255)
 	TIMER_COLOR: [255, 255, 255] as const,
 	LAP_TIMER_COLOR: [200, 200, 200] as const,
@@ -71,6 +87,7 @@ export const RaceConfig = {
 	POSITION_3RD_COLOR: [205, 127, 50] as const, // Bronze
 	POSITION_GAIN_COLOR: [50, 255, 50] as const,
 	POSITION_LOSE_COLOR: [255, 50, 50] as const,
+	LEADERBOARD_LOCAL_PLAYER_BG_COLOR: [40, 60, 100] as const, // Subtle blue for local player row
 } as const;
 
 // Pre-computed Color3 values for direct use (avoids repeated Color3 construction)
@@ -91,4 +108,5 @@ export const RaceColors = {
 	POSITION_3RD: rgbToColor3(RaceConfig.POSITION_3RD_COLOR),
 	POSITION_GAIN: rgbToColor3(RaceConfig.POSITION_GAIN_COLOR),
 	POSITION_LOSE: rgbToColor3(RaceConfig.POSITION_LOSE_COLOR),
+	LEADERBOARD_LOCAL_PLAYER_BG: rgbToColor3(RaceConfig.LEADERBOARD_LOCAL_PLAYER_BG_COLOR),
 } as const;

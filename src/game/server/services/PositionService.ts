@@ -2,7 +2,7 @@ import { OnStart, Service, Dependency } from "@flamework/core";
 import { Players, RunService, Workspace } from "@rbxts/services";
 import { RaceConfig } from "shared/constants/RaceConfig";
 import { PART_NAMES } from "shared/constants/PartNames";
-import { RaceGameState } from "shared/types/RaceTypes";
+import { RaceGameState, LeaderboardEntry } from "shared/types/RaceTypes";
 import { RaceClientEvents } from "game/server/network";
 import { RaceService } from "./RaceService";
 import { BotService } from "./BotService";
@@ -13,6 +13,7 @@ const LOG_PREFIX = "[PositionService]";
 interface RacerProgress {
 	id: string; // `Player_${userId}` or `Bot_${index}`
 	player?: Player; // Only set for players
+	displayName: string; // Player display name or "Bot 1"
 	score: number;
 	lap: number;
 	checkpoint: number;
@@ -93,6 +94,7 @@ export class PositionService implements OnStart {
 			racers.push({
 				id: `Player_${player.UserId}`,
 				player: player,
+				displayName: player.DisplayName,
 				score: score,
 				lap: state.currentLap,
 				checkpoint: state.currentCheckpoint,
@@ -117,9 +119,14 @@ export class PositionService implements OnStart {
 				this.checkpointCount,
 			);
 
+			// Parse bot index from botId (e.g., "Bot_1" -> "Bot 1")
+			const botIndex = botId.gsub("Bot_", "")[0];
+			const displayName = `Bot ${botIndex}`;
+
 			racers.push({
 				id: botId,
 				player: undefined,
+				displayName: displayName,
 				score: score,
 				lap: botState.currentLap,
 				checkpoint: botState.currentCheckpoint,
@@ -139,11 +146,20 @@ export class PositionService implements OnStart {
 
 		// Assign positions and notify players
 		const totalRacers = racers.size();
+		const leaderboardEntries: LeaderboardEntry[] = [];
+
 		for (let i = 0; i < racers.size(); i++) {
 			const racer = racers[i];
 			const position = i + 1; // 1-based position
 
-			// Only notify players (not bots)
+			// Build leaderboard entry for all racers
+			leaderboardEntries.push({
+				id: racer.id,
+				displayName: racer.displayName,
+				position: position,
+			});
+
+			// Only notify players (not bots) about their individual position
 			if (racer.player) {
 				RaceClientEvents.positionUpdated.fire(racer.player, {
 					position: position,
@@ -154,6 +170,9 @@ export class PositionService implements OnStart {
 				this.previousPositions.set(racer.player, position);
 			}
 		}
+
+		// Broadcast full leaderboard to all players
+		RaceClientEvents.leaderboardUpdated.broadcast(leaderboardEntries);
 	}
 
 	/**

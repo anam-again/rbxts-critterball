@@ -48,8 +48,9 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - **Checkpoint-based racing**: Server-authoritative checkpoint validation
 - **3-lap races**: Configurable lap count with automatic lap tracking
 - **Death barrier**: Fall below the barrier to respawn at last checkpoint
-- **Race HUD**: Live timer, lap counter, checkpoint progress, and race position
+- **Race HUD**: Live timer, lap counter, checkpoint progress, and race position (fades in 5 seconds after start)
 - **Position tracking**: Real-time position display with gold/silver/bronze colors for top 3
+- **Leaderboard**: Full racer leaderboard showing all positions with animated row changes
 - **Finish screen**: Overlay with final time on race completion
 
 ### Bot System (Race Mode)

@@ -1,5 +1,5 @@
 import { Networking } from "@flamework/networking";
-import { PlayerRaceState, RaceGameState, RacePositionUpdate } from "shared/types/RaceTypes";
+import { PlayerRaceState, RaceGameState, RacePositionUpdate, LeaderboardEntry } from "shared/types/RaceTypes";
 import { GamemodeId } from "shared/types/GameTypes";
 
 interface RaceServerEvents {
@@ -16,6 +16,7 @@ interface RaceClientEvents {
 	gameStateChanged(state: RaceGameState): void; // State updates
 	allPlayersLoaded(): void; // All players have loaded, no longer waiting
 	positionUpdated(update: RacePositionUpdate): void; // Position in race (1st, 2nd, etc.)
+	leaderboardUpdated(entries: LeaderboardEntry[]): void; // Full leaderboard for all racers
 }
 
 export const RaceEvents = Networking.createEvent<RaceServerEvents, RaceClientEvents>();

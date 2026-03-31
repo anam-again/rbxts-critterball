@@ -46,7 +46,7 @@ critterball/
 │   │   │   └── InputActions.ts    # Input action names
 │   │   ├── types/
 │   │   │   ├── LobbyTypes.ts      # PartyState, PartyMember, etc.
-│   │   │   ├── RaceTypes.ts       # PlayerRaceState, RaceGameState enum, RacePositionUpdate
+│   │   │   ├── RaceTypes.ts       # PlayerRaceState, RaceGameState enum, RacePositionUpdate, LeaderboardEntry
 │   │   │   ├── GameTypes.ts       # GamemodeId enum, TeleportData
 │   │   │   └── BotTypes.ts        # BotState, BotDifficulty enum, BotWaypoint
 │   │   ├── utilities/
@@ -313,9 +313,9 @@ HARD:   100% speed, 90% max speed, 3x turn force
 Server-authoritative position calculation for all racers (players + bots).
 
 #### Components
-- **PositionService** (server): Calculates positions using race checkpoints, fires updates to clients
+- **PositionService** (server): Calculates positions using race checkpoints, broadcasts to all clients
 - **RaceService** (server): Exposes `getCheckpointCount()` and `getCheckpointPosition()` for position calculation
-- **RaceUIController** (client): Displays position with animations
+- **RaceUIController** (client): Displays position indicator and leaderboard with animations
 
 #### Position Calculation
 Uses "last passed checkpoint" approach (not nearest waypoint) for accuracy on tracks with vertical overlaps:
@@ -328,12 +328,21 @@ Where:
 - `distanceScore` = `1 - (horizontalDistanceToNextCheckpoint / 1000)`, clamped 0-1
 - Distance uses XZ plane only (ignores Y for vertical track overlaps)
 
-#### UI Features
+#### Position Indicator UI
 - Gold/silver/bronze colors for 1st/2nd/3rd place
 - Green flash when gaining position
 - Red flash when losing position
 - Pulse animation when moving up in position
 - Position displayed at bottom of race HUD (uses UIListLayout with SortOrder.LayoutOrder)
+
+#### Leaderboard UI
+- Displays all racers with their current positions
+- Positioned below the race HUD with a 16px gap
+- Fixed height container (8 rows max, matches TARGET_RACER_COUNT)
+- Local player row highlighted with subtle blue background
+- Rows animate to new Y positions when positions change (0.3s tween)
+- Both HUD and leaderboard fade in together 5 seconds after race starts
+- Players show display name, bots show "Bot 1", "Bot 2", etc.
 
 ### Minimap System
 
@@ -478,6 +487,7 @@ Race settings in `src/shared/constants/RaceConfig.ts`:
 - **HUD**: Positioning, padding, font sizes, colors for race UI
 - **COUNTDOWN**: Font size, colors for countdown numbers and "Race!" text
 - **FINISH_SCREEN**: Overlay transparency, title/time colors and sizes
+- **LEADERBOARD**: Show delay (5s), fade duration, row height, max racers, name truncation
 
 ## Key Configuration (BotConfig.ts)
 
@@ -538,6 +548,7 @@ RaceClientEvents (Server → Client):
   - gameStateChanged(state: RaceGameState): void    // State updates (waiting/starting/countdown/racing)
   - allPlayersLoaded(): void                        // All players loaded, hide "Waiting for players"
   - positionUpdated(update: RacePositionUpdate): void  // Position in race (1st, 2nd, etc.)
+  - leaderboardUpdated(entries: LeaderboardEntry[]): void  // Full leaderboard for all racers
 ```
 
 ### Game Network Events (game/shared/network.ts)

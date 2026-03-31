@@ -42,3 +42,12 @@ export interface RacePositionUpdate {
 	position: number; // 1-based (1st, 2nd, etc.)
 	totalRacers: number; // Total players + bots
 }
+
+/**
+ * Leaderboard entry for displaying all racers' positions.
+ */
+export interface LeaderboardEntry {
+	id: string; // "Player_123" or "Bot_1"
+	displayName: string; // Player display name or "Bot 1"
+	position: number; // 1-based position
+}

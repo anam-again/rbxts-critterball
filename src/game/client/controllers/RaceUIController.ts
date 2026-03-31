@@ -1,7 +1,7 @@
 import { Controller, OnStart, Dependency } from "@flamework/core";
 import { Players, RunService, TweenService } from "@rbxts/services";
 import { RaceConfig, RaceColors } from "shared/constants/RaceConfig";
-import { PlayerRaceState, RaceGameState, RacePositionUpdate } from "shared/types/RaceTypes";
+import { PlayerRaceState, RaceGameState, RacePositionUpdate, LeaderboardEntry } from "shared/types/RaceTypes";
 import { GamemodeId } from "shared/types/GameTypes";
 import { RaceClientEvents } from "game/client/network";
 import { GameModeController } from "./GameModeController";
@@ -42,6 +42,12 @@ export class RaceUIController implements OnStart {
 	private flashTween?: Tween;
 	private pulseTween?: Tween;
 
+	// Leaderboard UI
+	private leaderboardFrame?: Frame;
+	private leaderboardRows = new Map<string, Frame>(); // racer ID -> row frame
+	private hudVisible = false; // Tracks if HUD and leaderboard have faded in
+	private raceStartTime = 0;
+
 	onStart(): void {
 		print(`${LOG_PREFIX} Started`);
 
@@ -64,6 +70,7 @@ export class RaceUIController implements OnStart {
 		this.createCountdownUI();
 		this.createStatusUI();
 		this.createPositionUI();
+		this.createLeaderboardUI();
 
 		// Hide HUD initially (will show when race starts)
 		// Position UI is now a child of hudFrame, so it's hidden too
@@ -75,22 +82,37 @@ export class RaceUIController implements OnStart {
 		this.updateStatusText("waiting");
 
 		// Listen for race events
-		RaceClientEvents.raceStarted.connect(() => {
+		RaceClientEvents.raceStarted.connect((startTime) => {
 			print(`${LOG_PREFIX} Race started`);
 			this.previousLap = 1;
+			this.raceStartTime = startTime;
 
-			// Show HUD when race starts (position UI is a child, shown automatically)
+			// Show HUD frame when race starts but keep contents transparent
+			// They will fade in after LEADERBOARD_SHOW_DELAY seconds
 			if (this.hudFrame) {
 				this.hudFrame.Visible = true;
+			}
+			if (this.leaderboardFrame) {
+				this.leaderboardFrame.Visible = true;
 			}
 
 			// Hide status label
 			this.hideStatusLabel();
+
+			// Schedule HUD and leaderboard to fade in after delay
+			task.delay(RaceConfig.LEADERBOARD_SHOW_DELAY, () => {
+				this.showHudAndLeaderboard();
+			});
 		});
 
 		// Listen for position updates
 		RaceClientEvents.positionUpdated.connect((update) => {
 			this.updatePosition(update);
+		});
+
+		// Listen for leaderboard updates
+		RaceClientEvents.leaderboardUpdated.connect((entries) => {
+			this.updateLeaderboard(entries);
 		});
 
 		RaceClientEvents.countdownStarted.connect(() => {
@@ -155,7 +177,7 @@ export class RaceUIController implements OnStart {
 		this.hudFrame.Size = new UDim2(0, RaceConfig.RACE_HUD_WIDTH, 0, 0); // Auto-size height
 		this.hudFrame.AutomaticSize = Enum.AutomaticSize.Y;
 		this.hudFrame.BackgroundColor3 = RaceColors.HUD_BACKGROUND;
-		this.hudFrame.BackgroundTransparency = RaceConfig.HUD_BACKGROUND_TRANSPARENCY;
+		this.hudFrame.BackgroundTransparency = 1; // Start transparent, will fade in
 		this.hudFrame.BorderSizePixel = 0;
 		this.hudFrame.Parent = this.screenGui;
 
@@ -191,6 +213,7 @@ export class RaceUIController implements OnStart {
 		this.totalTimeLabel.TextColor3 = RaceColors.TIMER;
 		this.totalTimeLabel.TextXAlignment = Enum.TextXAlignment.Right;
 		this.totalTimeLabel.Text = "00:00.00";
+		this.totalTimeLabel.TextTransparency = 1; // Start transparent, will fade in
 		this.totalTimeLabel.LayoutOrder = 1;
 		this.totalTimeLabel.Parent = this.hudFrame;
 
@@ -204,6 +227,7 @@ export class RaceUIController implements OnStart {
 		this.lapTimeLabel.TextColor3 = RaceColors.LAP_TIMER;
 		this.lapTimeLabel.TextXAlignment = Enum.TextXAlignment.Right;
 		this.lapTimeLabel.Text = "Lap: 00:00.00";
+		this.lapTimeLabel.TextTransparency = 1; // Start transparent, will fade in
 		this.lapTimeLabel.LayoutOrder = 3;
 		this.lapTimeLabel.Parent = this.hudFrame;
 
@@ -217,6 +241,7 @@ export class RaceUIController implements OnStart {
 		this.lapCounterLabel.TextColor3 = RaceColors.LAP_COUNTER;
 		this.lapCounterLabel.TextXAlignment = Enum.TextXAlignment.Right;
 		this.lapCounterLabel.Text = "Lap 1/3";
+		this.lapCounterLabel.TextTransparency = 1; // Start transparent, will fade in
 		this.lapCounterLabel.LayoutOrder = 4;
 		this.lapCounterLabel.Parent = this.hudFrame;
 
@@ -655,6 +680,7 @@ export class RaceUIController implements OnStart {
 		this.positionLabel.TextSize = RaceConfig.POSITION_FONT_SIZE;
 		this.positionLabel.TextColor3 = RaceColors.POSITION_1ST;
 		this.positionLabel.Text = "1";
+		this.positionLabel.TextTransparency = 1; // Start transparent, will fade in
 		this.positionLabel.LayoutOrder = 1;
 		this.positionLabel.Parent = innerContainer;
 
@@ -668,6 +694,7 @@ export class RaceUIController implements OnStart {
 		this.positionSuffixLabel.TextSize = RaceConfig.POSITION_SUFFIX_FONT_SIZE;
 		this.positionSuffixLabel.TextColor3 = RaceColors.POSITION_1ST;
 		this.positionSuffixLabel.Text = "st";
+		this.positionSuffixLabel.TextTransparency = 1; // Start transparent, will fade in
 		this.positionSuffixLabel.LayoutOrder = 2;
 		this.positionSuffixLabel.Parent = innerContainer;
 	}
@@ -772,5 +799,262 @@ export class RaceUIController implements OnStart {
 
 			this.pulseTween.Play();
 		}
+	}
+
+	private createLeaderboardUI(): void {
+		if (!this.screenGui || !this.hudFrame) return;
+
+		// Calculate fixed height for leaderboard (max racers * row height + padding)
+		const contentHeight = RaceConfig.LEADERBOARD_MAX_RACERS * RaceConfig.LEADERBOARD_ROW_HEIGHT;
+		const totalHeight = contentHeight + RaceConfig.LEADERBOARD_PADDING * 2;
+
+		// Create leaderboard frame positioned below the HUD
+		this.leaderboardFrame = new Instance("Frame");
+		this.leaderboardFrame.Name = "LeaderboardFrame";
+		this.leaderboardFrame.AnchorPoint = new Vector2(1, 0);
+		// Position below HUD with a gap - we'll dynamically update this
+		this.leaderboardFrame.Position = new UDim2(1, -RaceConfig.RACE_HUD_RIGHT_OFFSET, 0, 0);
+		this.leaderboardFrame.Size = new UDim2(0, RaceConfig.LEADERBOARD_WIDTH, 0, totalHeight); // Fixed size
+		this.leaderboardFrame.BackgroundColor3 = RaceColors.HUD_BACKGROUND;
+		this.leaderboardFrame.BackgroundTransparency = 1; // Start fully transparent
+		this.leaderboardFrame.BorderSizePixel = 0;
+		this.leaderboardFrame.Visible = false;
+		this.leaderboardFrame.ClipsDescendants = true;
+		this.leaderboardFrame.Parent = this.screenGui;
+
+		// Corner rounding
+		const corner = new Instance("UICorner");
+		corner.CornerRadius = new UDim(0, RaceConfig.LEADERBOARD_CORNER_RADIUS);
+		corner.Parent = this.leaderboardFrame;
+
+		// Padding
+		const padding = new Instance("UIPadding");
+		padding.PaddingTop = new UDim(0, RaceConfig.LEADERBOARD_PADDING);
+		padding.PaddingBottom = new UDim(0, RaceConfig.LEADERBOARD_PADDING);
+		padding.PaddingLeft = new UDim(0, RaceConfig.LEADERBOARD_PADDING);
+		padding.PaddingRight = new UDim(0, RaceConfig.LEADERBOARD_PADDING);
+		padding.Parent = this.leaderboardFrame;
+
+		// Update leaderboard position when HUD size changes
+		this.updateLeaderboardPosition();
+		if (this.hudFrame) {
+			this.hudFrame.GetPropertyChangedSignal("AbsoluteSize").Connect(() => {
+				this.updateLeaderboardPosition();
+			});
+		}
+	}
+
+	private updateLeaderboardPosition(): void {
+		if (!this.leaderboardFrame || !this.hudFrame) return;
+
+		// Position below HUD with gap
+		const hudBottom = RaceConfig.RACE_HUD_TOP_OFFSET + this.hudFrame.AbsoluteSize.Y;
+		this.leaderboardFrame.Position = new UDim2(
+			1,
+			-RaceConfig.RACE_HUD_RIGHT_OFFSET,
+			0,
+			hudBottom + RaceConfig.LEADERBOARD_GAP_FROM_HUD,
+		);
+	}
+
+	private showHudAndLeaderboard(): void {
+		if (this.hudVisible) return;
+		this.hudVisible = true;
+
+		const tweenInfo = new TweenInfo(
+			RaceConfig.LEADERBOARD_FADE_DURATION,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out,
+		);
+
+		// Fade in HUD background
+		if (this.hudFrame) {
+			const hudBgTween = TweenService.Create(this.hudFrame, tweenInfo, {
+				BackgroundTransparency: RaceConfig.HUD_BACKGROUND_TRANSPARENCY,
+			});
+			hudBgTween.Play();
+		}
+
+		// Fade in HUD text labels
+		if (this.totalTimeLabel) {
+			TweenService.Create(this.totalTimeLabel, tweenInfo, { TextTransparency: 0 }).Play();
+		}
+		if (this.lapTimeLabel) {
+			TweenService.Create(this.lapTimeLabel, tweenInfo, { TextTransparency: 0 }).Play();
+		}
+		if (this.lapCounterLabel) {
+			TweenService.Create(this.lapCounterLabel, tweenInfo, { TextTransparency: 0 }).Play();
+		}
+
+		// Fade in position labels
+		if (this.positionLabel) {
+			TweenService.Create(this.positionLabel, tweenInfo, { TextTransparency: 0 }).Play();
+		}
+		if (this.positionSuffixLabel) {
+			TweenService.Create(this.positionSuffixLabel, tweenInfo, { TextTransparency: 0 }).Play();
+		}
+
+		// Fade in leaderboard background
+		if (this.leaderboardFrame) {
+			const leaderboardBgTween = TweenService.Create(this.leaderboardFrame, tweenInfo, {
+				BackgroundTransparency: RaceConfig.HUD_BACKGROUND_TRANSPARENCY,
+			});
+			leaderboardBgTween.Play();
+
+			// Fade in all existing row contents
+			for (const [, rowFrame] of this.leaderboardRows) {
+				this.fadeInRow(rowFrame);
+			}
+		}
+	}
+
+	private fadeInRow(rowFrame: Frame): void {
+		// Fade in text labels within the row
+		for (const child of rowFrame.GetChildren()) {
+			if (child.IsA("TextLabel")) {
+				const textTween = TweenService.Create(
+					child,
+					new TweenInfo(RaceConfig.LEADERBOARD_FADE_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+					{ TextTransparency: 0 },
+				);
+				textTween.Play();
+			}
+		}
+
+		// Fade in background for local player
+		const bgTween = TweenService.Create(
+			rowFrame,
+			new TweenInfo(RaceConfig.LEADERBOARD_FADE_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ BackgroundTransparency: rowFrame.GetAttribute("IsLocalPlayer") ? 0.7 : 1 },
+		);
+		bgTween.Play();
+	}
+
+	private updateLeaderboard(entries: LeaderboardEntry[]): void {
+		if (!this.leaderboardFrame) return;
+
+		const localPlayerId = `Player_${this.player.UserId}`;
+		const existingIds = new Set<string>();
+
+		// Update or create rows for each entry
+		for (const entry of entries) {
+			existingIds.add(entry.id);
+
+			let rowFrame = this.leaderboardRows.get(entry.id);
+			if (!rowFrame) {
+				// Create new row
+				rowFrame = this.createLeaderboardRow(entry, entry.id === localPlayerId);
+				this.leaderboardRows.set(entry.id, rowFrame);
+
+				// If HUD is already visible, fade in the new row
+				if (this.hudVisible) {
+					this.fadeInRow(rowFrame);
+				}
+			}
+
+			// Update row content and position
+			this.updateLeaderboardRow(rowFrame, entry);
+		}
+
+		// Remove rows for racers no longer in the leaderboard
+		for (const [id, rowFrame] of this.leaderboardRows) {
+			if (!existingIds.has(id)) {
+				rowFrame.Destroy();
+				this.leaderboardRows.delete(id);
+			}
+		}
+	}
+
+	private createLeaderboardRow(entry: LeaderboardEntry, isLocalPlayer: boolean): Frame {
+		const rowFrame = new Instance("Frame");
+		rowFrame.Name = `Row_${entry.id}`;
+		rowFrame.Size = new UDim2(1, 0, 0, RaceConfig.LEADERBOARD_ROW_HEIGHT);
+		rowFrame.BackgroundColor3 = isLocalPlayer ? RaceColors.LEADERBOARD_LOCAL_PLAYER_BG : RaceColors.HUD_BACKGROUND;
+		rowFrame.BackgroundTransparency = 1; // Start transparent, will fade in
+		rowFrame.BorderSizePixel = 0;
+		rowFrame.Parent = this.leaderboardFrame;
+
+		// Mark as local player for fade-in logic
+		rowFrame.SetAttribute("IsLocalPlayer", isLocalPlayer);
+
+		// Corner rounding for local player row
+		if (isLocalPlayer) {
+			const rowCorner = new Instance("UICorner");
+			rowCorner.CornerRadius = new UDim(0, 4);
+			rowCorner.Parent = rowFrame;
+		}
+
+		// Position label (left side)
+		const positionLabel = new Instance("TextLabel");
+		positionLabel.Name = "Position";
+		positionLabel.Size = new UDim2(0, RaceConfig.LEADERBOARD_POSITION_WIDTH, 1, 0);
+		positionLabel.Position = UDim2.fromOffset(0, 0);
+		positionLabel.BackgroundTransparency = 1;
+		positionLabel.Font = Enum.Font.GothamBold;
+		positionLabel.TextSize = RaceConfig.LEADERBOARD_POSITION_FONT_SIZE;
+		positionLabel.TextColor3 = this.getPositionColor(entry.position);
+		positionLabel.TextXAlignment = Enum.TextXAlignment.Left;
+		positionLabel.Text = tostring(entry.position);
+		positionLabel.TextTransparency = 1; // Start transparent
+		positionLabel.Parent = rowFrame;
+
+		// Name label (right of position)
+		const nameLabel = new Instance("TextLabel");
+		nameLabel.Name = "Name";
+		nameLabel.Size = new UDim2(1, -RaceConfig.LEADERBOARD_POSITION_WIDTH, 1, 0);
+		nameLabel.Position = UDim2.fromOffset(RaceConfig.LEADERBOARD_POSITION_WIDTH, 0);
+		nameLabel.BackgroundTransparency = 1;
+		nameLabel.Font = Enum.Font.Gotham;
+		nameLabel.TextSize = RaceConfig.LEADERBOARD_NAME_FONT_SIZE;
+		nameLabel.TextColor3 = new Color3(1, 1, 1);
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Left;
+		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd;
+		nameLabel.Text = this.truncateName(entry.displayName);
+		nameLabel.TextTransparency = 1; // Start transparent
+		nameLabel.Parent = rowFrame;
+
+		return rowFrame;
+	}
+
+	private updateLeaderboardRow(rowFrame: Frame, entry: LeaderboardEntry): void {
+		// Calculate target Y position based on position (0-indexed)
+		const targetY = (entry.position - 1) * RaceConfig.LEADERBOARD_ROW_HEIGHT;
+		const targetPosition = UDim2.fromOffset(0, targetY);
+
+		// Animate to new position if visible
+		if (this.hudVisible && rowFrame.Position.Y.Offset !== targetY) {
+			const positionTween = TweenService.Create(
+				rowFrame,
+				new TweenInfo(
+					RaceConfig.LEADERBOARD_POSITION_TWEEN_TIME,
+					Enum.EasingStyle.Quad,
+					Enum.EasingDirection.Out,
+				),
+				{ Position: targetPosition },
+			);
+			positionTween.Play();
+		} else {
+			rowFrame.Position = targetPosition;
+		}
+
+		// Update position label text and color
+		const positionLabel = rowFrame.FindFirstChild("Position") as TextLabel | undefined;
+		if (positionLabel) {
+			positionLabel.Text = tostring(entry.position);
+			positionLabel.TextColor3 = this.getPositionColor(entry.position);
+		}
+
+		// Update name label
+		const nameLabel = rowFrame.FindFirstChild("Name") as TextLabel | undefined;
+		if (nameLabel) {
+			nameLabel.Text = this.truncateName(entry.displayName);
+		}
+	}
+
+	private truncateName(name: string): string {
+		if (name.size() <= RaceConfig.LEADERBOARD_NAME_MAX_LENGTH) {
+			return name;
+		}
+		return name.sub(1, RaceConfig.LEADERBOARD_NAME_MAX_LENGTH) + "...";
 	}
 }
