@@ -260,38 +260,49 @@ export class CritterballController implements OnStart {
 	}
 
 	private onBouncerTouched(bouncer: Bouncer, hit: BasePart): void {
-		const sphere = BallState.getSphere();
-		if (!sphere || hit !== sphere) return;
-
 		const now = tick();
 		const lastTrigger = this.bouncerCooldowns.get(bouncer) ?? 0;
 		if (now - lastTrigger < BallConfig.BOUNCER_COOLDOWN) return;
 
+		// Check if hit is the local player's ball
+		const sphere = BallState.getSphere();
+		const isLocalPlayerBall = sphere !== undefined && hit === sphere;
+
+		// Check if hit is a bot ball (parent model name starts with "Bot_")
+		const isBotBall = hit.Parent?.IsA("Model") && hit.Parent.Name.sub(1, 4) === "Bot_" && hit.Name === PART_NAMES.SPHERE;
+
+		// Only trigger for player or bot balls
+		if (!isLocalPlayerBall && !isBotBall) return;
+
 		this.bouncerCooldowns.set(bouncer, now);
 
-		const bouncerCenter = bouncer.MainBouncer.Position;
-		const ballPosition = sphere.Position;
-		const directionAway = new Vector3(
-			ballPosition.X - bouncerCenter.X,
-			0,
-			ballPosition.Z - bouncerCenter.Z,
-		);
+		// Only apply impulse for local player (server handles bot impulses)
+		if (isLocalPlayerBall && sphere) {
+			const bouncerCenter = bouncer.MainBouncer.Position;
+			const ballPosition = sphere.Position;
+			const directionAway = new Vector3(
+				ballPosition.X - bouncerCenter.X,
+				0,
+				ballPosition.Z - bouncerCenter.Z,
+			);
 
-		let impulseDirection: Vector3;
-		if (directionAway.Magnitude > 0.1) {
-			impulseDirection = directionAway.Unit;
-		} else {
-			const velocity = sphere.AssemblyLinearVelocity;
-			const horizontalVel = new Vector3(velocity.X, 0, velocity.Z);
-			impulseDirection = horizontalVel.Magnitude > 0.1 ? horizontalVel.Unit : new Vector3(1, 0, 0);
+			let impulseDirection: Vector3;
+			if (directionAway.Magnitude > 0.1) {
+				impulseDirection = directionAway.Unit;
+			} else {
+				const velocity = sphere.AssemblyLinearVelocity;
+				const horizontalVel = new Vector3(velocity.X, 0, velocity.Z);
+				impulseDirection = horizontalVel.Magnitude > 0.1 ? horizontalVel.Unit : new Vector3(1, 0, 0);
+			}
+
+			const impulseForce = (bouncer.GetAttribute(BOUNCER_ATTRIBUTES.IMPULSE_FORCE) as number | undefined) ??
+				BallConfig.BOUNCER_IMPULSE_FORCE;
+
+			const impulse = impulseDirection.mul(impulseForce);
+			sphere.ApplyImpulse(impulse);
 		}
 
-		const impulseForce = (bouncer.GetAttribute(BOUNCER_ATTRIBUTES.IMPULSE_FORCE) as number | undefined) ??
-			BallConfig.BOUNCER_IMPULSE_FORCE;
-
-		const impulse = impulseDirection.mul(impulseForce);
-		sphere.ApplyImpulse(impulse);
-
+		// Always trigger animation for both player and bot
 		this.startBouncerAnimation(bouncer);
 	}
 

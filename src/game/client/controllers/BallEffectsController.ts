@@ -7,6 +7,18 @@ import { PART_NAMES } from "shared/constants/PartNames";
 import { EFFECT_NAMES, PARTICLE_NAMES } from "shared/constants/UINames";
 
 /**
+ * Per-ball effect state for tracking all balls (player + bot).
+ */
+interface BallEffectState {
+	ball: Model;
+	sphere: BasePart;
+	trails: Trail[];
+	neonGlow?: BasePart;
+	peakSpeed: number;
+	previousVelocity: Vector3;
+}
+
+/**
  * Handles all visual effects for the ball:
  * - Trail dynamics
  * - Rolling dust particles
@@ -20,9 +32,8 @@ import { EFFECT_NAMES, PARTICLE_NAMES } from "shared/constants/UINames";
  */
 @Controller()
 export class BallEffectsController implements OnStart {
-	// Trail references
-	private trails: Trail[] = [];
-	private trailPeakSpeed = 0;
+	// Track ALL balls (players + bots)
+	private trackedBalls = new Map<string, BallEffectState>();
 	private trailDecayRate = 20;
 
 	// Impact particles
@@ -65,7 +76,24 @@ export class BallEffectsController implements OnStart {
 		this.createImpactBlurEffect();
 		this.createColorCorrectionEffect();
 
-		// Listen for ball ready
+		// Scan for existing balls
+		this.scanForBalls();
+
+		// Listen for new balls added to workspace
+		Workspace.ChildAdded.Connect((child) => {
+			if (child.IsA("Model") && this.isBallModel(child.Name)) {
+				this.initializeBallEffects(child);
+			}
+		});
+
+		// Listen for ball removal
+		Workspace.ChildRemoved.Connect((child) => {
+			if (child.IsA("Model")) {
+				this.trackedBalls.delete(child.Name);
+			}
+		});
+
+		// Listen for local player ball ready (for local player-specific setup)
 		ClientEvents.ballReady.connect((ball) => {
 			this.onBallReady(ball);
 		});
@@ -74,84 +102,218 @@ export class BallEffectsController implements OnStart {
 		RunService.RenderStepped.Connect((dt) => this.onRenderStepped(dt));
 	}
 
-	private onBallReady(ball: Model): void {
-		// Find trail references
-		this.trails = [];
-		const trailAnchor = ball.WaitForChild(PART_NAMES.TRAIL_ANCHOR, 5) as Part | undefined;
-		if (trailAnchor) {
-			for (const child of trailAnchor.GetChildren()) {
-				if (child.IsA("Trail")) {
-					this.trails.push(child);
-				}
+	// ============================================
+	// Ball Tracking
+	// ============================================
+
+	private isBallModel(name: string): boolean {
+		return name.sub(1, 5) === "Ball_" || name.sub(1, 4) === "Bot_";
+	}
+
+	private scanForBalls(): void {
+		for (const child of Workspace.GetChildren()) {
+			if (child.IsA("Model") && this.isBallModel(child.Name)) {
+				this.initializeBallEffects(child);
 			}
 		}
+	}
 
-		// Get NeonGlow reference
+	private initializeBallEffects(ball: Model): void {
+		// Skip if already tracked
+		if (this.trackedBalls.has(ball.Name)) return;
+
+		// Mark as being initialized to prevent duplicate initialization
+		this.trackedBalls.set(ball.Name, undefined as unknown as BallEffectState);
+
+		// Wait for sphere asynchronously (it may not have replicated yet)
+		task.spawn(() => {
+			const sphere = ball.WaitForChild(PART_NAMES.SPHERE, 10) as BasePart | undefined;
+			if (!sphere) {
+				this.trackedBalls.delete(ball.Name);
+				return;
+			}
+
+			// Ball may have been removed while waiting
+			if (!ball.Parent) {
+				this.trackedBalls.delete(ball.Name);
+				return;
+			}
+
+			// Create state now that we have the sphere
+			const state: BallEffectState = {
+				ball,
+				sphere,
+				trails: [],
+				neonGlow: undefined,
+				peakSpeed: 0,
+				previousVelocity: Vector3.zero,
+			};
+			this.trackedBalls.set(ball.Name, state);
+
+			// Now wait for TrailAnchor
+			this.waitForTrails(ball, state);
+
+			// And wait for NeonGlow
+			this.waitForNeonGlow(ball, state);
+		});
+	}
+
+	private waitForTrails(ball: Model, state: BallEffectState): void {
+		task.spawn(() => {
+			const trailAnchor = ball.WaitForChild(PART_NAMES.TRAIL_ANCHOR, 10) as Part | undefined;
+			if (!trailAnchor) return;
+
+			// Ball may have been removed while waiting
+			if (!this.trackedBalls.has(ball.Name)) return;
+
+			// Wait a moment for children to replicate
+			task.wait(0.1);
+
+			// Collect trails
+			let trails: Trail[] = [];
+			for (const child of trailAnchor.GetChildren()) {
+				if (child.IsA("Trail")) trails.push(child);
+			}
+
+			if (trails.size() === 0) {
+				// Wait for any Trail to be added via ChildAdded
+				const connection = trailAnchor.ChildAdded.Connect((child) => {
+					if (child.IsA("Trail")) {
+						trails.push(child);
+					}
+				});
+
+				// Wait up to 5 seconds for trails to appear
+				const startTime = tick();
+				while (trails.size() === 0 && tick() - startTime < 5) {
+					task.wait(0.1);
+					// Also check current children in case we missed the event
+					for (const child of trailAnchor.GetChildren()) {
+						if (child.IsA("Trail") && !trails.includes(child)) {
+							trails.push(child);
+						}
+					}
+				}
+				connection.Disconnect();
+			}
+
+			// Update state with trails
+			const currentState = this.trackedBalls.get(ball.Name);
+			if (currentState) {
+				currentState.trails = trails;
+			}
+		});
+	}
+
+	private waitForNeonGlow(ball: Model, state: BallEffectState): void {
+		task.spawn(() => {
+			// Give the ball model time to fully replicate
+			task.wait(0.2);
+
+			// Ball may have been removed while waiting
+			if (!this.trackedBalls.has(ball.Name)) return;
+
+			// Find neon glow (recursive search)
+			const neonGlow = ball.FindFirstChild(PART_NAMES.NEON_GLOW, true) as BasePart | undefined;
+
+			if (neonGlow) {
+				neonGlow.Transparency = 1;
+				const currentState = this.trackedBalls.get(ball.Name);
+				if (currentState) {
+					currentState.neonGlow = neonGlow;
+				}
+			}
+		});
+	}
+
+	private onBallReady(ball: Model): void {
+		// Initialize in tracked balls system
+		this.initializeBallEffects(ball);
+
+		// Get NeonGlow reference for local player (for flash effects triggered by interactions)
 		this.neonGlow = ball.FindFirstChild(PART_NAMES.NEON_GLOW) as BasePart | undefined;
 		if (this.neonGlow) {
 			this.neonGlow.Transparency = 1;
 		}
 
-		// Create particle templates
+		// Create particle templates (local player only)
 		this.createImpactParticleTemplate();
 		this.createRollingDustEmitter(ball);
 	}
 
 	private onRenderStepped(dt: number): void {
-		if (!BallState.isReady()) return;
+		// Update effects for ALL tracked balls (players + bots)
+		for (const [ballName, state] of this.trackedBalls) {
+			// Skip if state is not yet initialized (placeholder while waiting for sphere)
+			if (!state || !state.sphere) continue;
+			this.updateBallEffects(state, dt);
+		}
 
-		const currentSpeed = BallState.getHorizontalSpeed();
-		const grounded = BallState.isGrounded();
-		const velocity = BallState.getCurrentVelocity();
+		// Local player-only effects (screen shake, FOV, camera, blur, saturation)
+		if (BallState.isReady()) {
+			const currentSpeed = BallState.getHorizontalSpeed();
+			const grounded = BallState.isGrounded();
+			const velocity = BallState.getCurrentVelocity();
 
-		// Update trail
-		this.updateTrailForSpeed(currentSpeed, dt);
+			// Update rolling dust (local player only - uses raycast)
+			this.updateRollingDust(currentSpeed, grounded);
 
-		// Update rolling dust
-		this.updateRollingDust(currentSpeed, grounded);
+			// Detect impacts (local player only - screen shake/blur)
+			this.detectImpact(velocity);
 
-		// Detect impacts
-		this.detectImpact(velocity);
+			// Update speed-based shake
+			this.updateSpeedShake(currentSpeed);
 
-		// Update speed-based shake
-		this.updateSpeedShake(currentSpeed);
+			// Apply screen shake
+			this.updateScreenShake(dt);
 
-		// Apply screen shake
-		this.updateScreenShake(dt);
+			// Update FOV
+			this.updateFOV(currentSpeed, dt);
 
-		// Update FOV
-		this.updateFOV(currentSpeed, dt);
+			// Update camera trailing
+			this.updateCameraTrail(velocity, dt);
 
-		// Update camera trailing
-		this.updateCameraTrail(velocity, dt);
+			// Update impact blur
+			this.updateImpactBlur(dt);
 
-		// Update impact blur
-		this.updateImpactBlur(dt);
-
-		// Update color correction
-		this.updateColorCorrection(currentSpeed, dt);
-
-		// Update neon glow
-		this.updateNeonGlow(currentSpeed, dt);
+			// Update color correction
+			this.updateColorCorrection(currentSpeed, dt);
+		}
 	}
 
-	// ============================================
-	// Trail System
-	// ============================================
+	/**
+	 * Update visual effects for any ball (player or bot).
+	 */
+	private updateBallEffects(state: BallEffectState, dt: number): void {
+		const velocity = state.sphere.AssemblyLinearVelocity;
+		const horizontalSpeed = new Vector3(velocity.X, 0, velocity.Z).Magnitude;
 
-	private updateTrailForSpeed(currentSpeed: number, dt: number): void {
-		if (this.trails.size() === 0) return;
+		// Update trail
+		this.updateTrailForBall(state, horizontalSpeed, dt);
 
-		// Update peak speed
-		if (currentSpeed > this.trailPeakSpeed) {
-			this.trailPeakSpeed = currentSpeed;
+		// Update neon glow
+		this.updateNeonGlowForBall(state, horizontalSpeed, dt);
+
+		// Store previous velocity for potential future use
+		state.previousVelocity = velocity;
+	}
+
+	/**
+	 * Update trail properties for any ball based on speed.
+	 */
+	private updateTrailForBall(state: BallEffectState, currentSpeed: number, dt: number): void {
+		if (state.trails.size() === 0) return;
+
+		// Update peak speed with decay
+		if (currentSpeed > state.peakSpeed) {
+			state.peakSpeed = currentSpeed;
 		} else {
-			this.trailPeakSpeed = math.max(0, this.trailPeakSpeed - this.trailDecayRate * dt);
+			state.peakSpeed = math.max(0, state.peakSpeed - this.trailDecayRate * dt);
 		}
 
 		// Calculate trail properties
 		const transparency = this.getScaledEffectValue(
-			this.trailPeakSpeed,
+			state.peakSpeed,
 			BallConfig.TRAIL_SPEED_SOFT_MAX,
 			BallConfig.TRAIL_SPEED_HARD_MAX,
 			BallConfig.TRAIL_MIN_TRANSPARENCY,
@@ -159,7 +321,7 @@ export class BallEffectsController implements OnStart {
 			BallConfig.TRAIL_HARD_MAX_TRANSPARENCY,
 		);
 		const width = this.getScaledEffectValue(
-			this.trailPeakSpeed,
+			state.peakSpeed,
 			BallConfig.TRAIL_SPEED_SOFT_MAX,
 			BallConfig.TRAIL_SPEED_HARD_MAX,
 			BallConfig.TRAIL_MIN_WIDTH,
@@ -167,14 +329,14 @@ export class BallEffectsController implements OnStart {
 			BallConfig.TRAIL_HARD_MAX_WIDTH,
 		);
 		const lifetime = this.getScaledEffectValue(
-			this.trailPeakSpeed,
+			state.peakSpeed,
 			BallConfig.TRAIL_SPEED_SOFT_MAX,
 			BallConfig.TRAIL_SPEED_HARD_MAX,
 			BallConfig.TRAIL_MIN_LIFETIME,
 			BallConfig.TRAIL_SOFT_MAX_LIFETIME,
 			BallConfig.TRAIL_HARD_MAX_LIFETIME,
 		);
-		const speedRatio = math.clamp(this.trailPeakSpeed / BallConfig.TRAIL_SPEED_SOFT_MAX, 0, 1);
+		const speedRatio = math.clamp(state.peakSpeed / BallConfig.TRAIL_SPEED_SOFT_MAX, 0, 1);
 		const maxLength = this.lerp(BallConfig.TRAIL_MIN_MAX_LENGTH, BallConfig.TRAIL_MAX_MAX_LENGTH, speedRatio);
 
 		// Create sequences
@@ -188,12 +350,27 @@ export class BallEffectsController implements OnStart {
 		]);
 
 		// Apply to trails
-		for (const trail of this.trails) {
+		for (const trail of state.trails) {
 			trail.Transparency = transparencySequence;
 			trail.WidthScale = widthSequence;
 			trail.Lifetime = lifetime;
 			trail.MaxLength = maxLength;
 		}
+	}
+
+	/**
+	 * Update neon glow for any ball based on speed.
+	 */
+	private updateNeonGlowForBall(state: BallEffectState, currentSpeed: number, dt: number): void {
+		if (!state.neonGlow) return;
+
+		// Calculate target transparency based on speed
+		const targetTransparency = this.getSpeedBasedNeonTransparency(currentSpeed);
+
+		// Smooth lerp to target
+		const lerpFactor = math.clamp(BallConfig.NEON_GLOW_LERP_SPEED * dt, 0, 1);
+		const currentTransparency = state.neonGlow.Transparency;
+		state.neonGlow.Transparency = this.lerp(currentTransparency, targetTransparency, lerpFactor);
 	}
 
 	// ============================================

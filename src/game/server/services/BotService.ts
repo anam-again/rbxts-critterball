@@ -28,6 +28,7 @@ export class BotService implements OnStart {
 	private gameModeService = Dependency<GameModeService>();
 
 	private ballsFolder = ReplicatedStorage.WaitForChild(PART_NAMES.BALLS) as Folder;
+	private trailsFolder = ReplicatedStorage.WaitForChild(PART_NAMES.TRAILS) as Folder;
 	private bots = new Map<string, BotState>();
 	private nextBotIndex = 0;
 	private botsSpawned = false;
@@ -475,6 +476,9 @@ export class BotService implements OnStart {
 
 		this.bots.set(botId, botState);
 
+		// Create trail for bot
+		this.createTrailForBot(ball, sphere);
+
 		// Update raycast filter
 		this.updateRaycastFilter();
 
@@ -552,6 +556,81 @@ export class BotService implements OnStart {
 			botBalls.push(botState.ball);
 		}
 		this.physicsService.updateRaycastFilter(botBalls);
+	}
+
+	// ==================== TRAIL SYSTEM ====================
+
+	private createTrailForBot(ball: Model, sphere: BasePart): void {
+		// Get and validate trail template
+		const trailTemplate = this.trailsFolder.FindFirstChild(BallConfig.DEFAULT_TRAIL) as Folder | undefined;
+		if (!trailTemplate || !trailTemplate.IsA("Folder")) {
+			warn(`${LOG_PREFIX} Cannot create trail - template "${BallConfig.DEFAULT_TRAIL}" not found or invalid`);
+			return;
+		}
+
+		// Create invisible anchor part welded to the sphere
+		const trailAnchor = new Instance("Part");
+		trailAnchor.Name = PART_NAMES.TRAIL_ANCHOR;
+		trailAnchor.Size = new Vector3(1, 1, 1);
+		trailAnchor.Transparency = 1;
+		trailAnchor.CanCollide = false;
+		trailAnchor.CanQuery = false;
+		trailAnchor.CanTouch = false;
+		trailAnchor.Massless = true;
+		trailAnchor.Anchored = false;
+		trailAnchor.CFrame = sphere.CFrame;
+		trailAnchor.Parent = ball;
+
+		// Weld the trail anchor to the sphere (reliable connection that won't disconnect)
+		const weld = new Instance("WeldConstraint");
+		weld.Name = PART_NAMES.TRAIL_WELD;
+		weld.Part0 = sphere;
+		weld.Part1 = trailAnchor;
+		weld.Parent = trailAnchor;
+
+		// Clone trail template contents onto the anchor
+		this.applyTrailTemplate(trailAnchor, trailTemplate);
+	}
+
+	private applyTrailTemplate(trailAnchor: Part, trailTemplate: Folder): void {
+		// Remove existing trail components (but keep the weld)
+		for (const child of trailAnchor.GetChildren()) {
+			if (child.IsA("Trail") || child.IsA("Attachment")) {
+				child.Destroy();
+			}
+		}
+
+		// Clone attachments and trails from template
+		const attachmentMap = new Map<string, Attachment>();
+
+		// First pass: clone attachments
+		for (const child of trailTemplate.GetChildren()) {
+			if (child.IsA("Attachment")) {
+				const attachment = child.Clone();
+				attachment.Parent = trailAnchor;
+				attachmentMap.set(child.Name, attachment);
+			}
+		}
+
+		// Second pass: clone trails and link attachments
+		for (const child of trailTemplate.GetChildren()) {
+			if (child.IsA("Trail")) {
+				const trail = child.Clone();
+
+				// Relink attachments to the cloned ones
+				const originalAttachment0 = child.Attachment0;
+				const originalAttachment1 = child.Attachment1;
+
+				if (originalAttachment0) {
+					trail.Attachment0 = attachmentMap.get(originalAttachment0.Name);
+				}
+				if (originalAttachment1) {
+					trail.Attachment1 = attachmentMap.get(originalAttachment1.Name);
+				}
+
+				trail.Parent = trailAnchor;
+			}
+		}
 	}
 
 	private onHeartbeat(dt: number): void {
