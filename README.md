@@ -25,6 +25,14 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - Character becomes massless inside ball
 - Customizable friction and elasticity
 
+### Character Animations
+- **Speed-based animations**: Characters inside balls animate based on speed
+- **Idle**: Plays when stationary or slow (display speed 0-100)
+- **Run**: Plays at medium speeds (display speed 100-300)
+- **Fast**: Custom animation at high speeds (display speed 300+)
+- **Smooth crossfading**: Animations transition smoothly between states
+- **Rig auto-detection**: Supports both R6 and R15 character rigs
+
 ### Gamemode System
 - **Race Mode**: Full race experience with countdown, showcase camera, timers, laps
 - **Sandbox Mode**: Free play with immediate movement, no race UI, speedometer only
@@ -46,6 +54,8 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 
 ### Bot System (Race Mode)
 - **AI racers**: Server-controlled bots that auto-fill races (up to 8 total racers)
+- **Character models**: Bots have character rigs inside their balls, just like players
+- **Speed-based animations**: Characters animate based on ball speed (idle/run/fast) with smooth crossfading
 - **Waypoint navigation**: Bots follow dedicated waypoints with obstacle avoidance
 - **Difficulty levels**: Easy, Medium, Hard with varying speed and turning ability
 - **Race integration**: Bots track checkpoints, laps, and compete for positions
@@ -150,18 +160,20 @@ src/
 
 ### Studio Setup (Game Worlds)
 
-Ball and trail assets are stored in `assets/rbxm/` and automatically synced via Rojo:
+Ball, trail, and character rig assets are stored in `assets/rbxm/` and automatically synced via Rojo:
 
 ```
 ReplicatedStorage/
 ├── Balls/
 │   └── DefaultBall/           (Model)
 │       └── Sphere             (Part)
-└── Trails/
-    └── DefaultTrail/          (Folder)
-        ├── TopAttachment      (Attachment)
-        ├── BottomAttachment   (Attachment)
-        └── Trail              (Trail)
+├── Trails/
+│   └── DefaultTrail/          (Folder)
+│       ├── TopAttachment      (Attachment)
+│       ├── BottomAttachment   (Attachment)
+│       └── Trail              (Trail)
+└── Rigs/
+    └── DefaultJonesy/         (Model, R6 character rig for bots)
 ```
 
 ### Race Track Setup (Game Worlds)

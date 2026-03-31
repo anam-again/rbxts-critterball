@@ -74,6 +74,7 @@ critterball/
 │       │   └── controllers/
 │       │       ├── CritterballController.ts  # Main coordinator, input, interactions
 │       │       ├── BallEffectsController.ts  # Visual effects (trails, particles, camera)
+│       │       ├── BallAnimationController.ts # Speed-based character animations
 │       │       ├── BallCameraController.ts
 │       │       ├── SpeedometerController.ts
 │       │       ├── CheckpointController.ts  # Checkpoint detection, death barrier
@@ -136,6 +137,7 @@ Enums are used instead of string literal types for better type checking:
 Ball-related functionality is split across focused controllers:
 - `CritterballController`: Coordinator, input, boost zones, bouncers, powerups
 - `BallEffectsController`: Visual effects (trail, particles, camera effects, neon glow)
+- `BallAnimationController`: Speed-based character animations (idle/run/fast)
 - `BallCameraController`: Showcase camera, camera transitions
 - `CheckpointController`: Checkpoint detection, death barrier
 
@@ -276,10 +278,19 @@ Server-controlled AI racers that auto-fill races. Bots do NOT use `SetNetworkOwn
 - Speed cap uses diminishing returns on bot's own impulses only - external forces (boosts, bouncers) can push past max speed
 
 #### Bot Visual Effects
+- **Character models**: BotService creates character rigs (DefaultJonesy) inside bot balls via RigidConstraint
 - **Trail system**: BotService creates trails using same pattern as CritterballService
 - **Client-side updates**: BallEffectsController tracks bot balls and updates trail/glow based on observed velocity
 - **Bouncer animations**: CritterballController detects bot sphere touches and triggers bouncer animations
 - Trail and neon glow scale with speed identically to player balls
+
+#### Character Animation System
+- **BallAnimationController** handles animations for ALL balls (players + bots)
+- Tracks all `Ball_*` and `Bot_*` models in Workspace
+- Detects rig type (R6/R15) and loads appropriate animations
+- Speed thresholds (display speed): Idle (0-100), Run (100-300), Fast (300+)
+- Smooth crossfade transitions between animation states (0.3s fade time)
+- Animations: R6/R15 idle, R6/R15 run, custom fast animation
 
 #### Waypoint Types
 - **Navigate waypoints** (`BotWaypoints` tag): Positions bots seek toward
