@@ -7,6 +7,7 @@ export const BotConfig = {
 	MAX_BOTS: 7,
 	BOT_SPAWN_DELAY: 0.5, // Seconds between spawning each bot
 	TARGET_RACER_COUNT: 8, // Total racers (players + bots) for auto-fill
+	DEFAULT_BOT_RIG: "DefaultJonesy", // Rig model to use for bot characters
 
 	// Navigation
 	WAYPOINT_CAPTURE_RADIUS: 10, // Distance to consider waypoint reached

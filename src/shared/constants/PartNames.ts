@@ -39,6 +39,7 @@ export const PART_NAMES = {
 	MAP: "Map",
 	BALLS: "Balls",
 	TRAILS: "Trails",
+	RIGS: "Rigs",
 
 	// Constraint/attachment names
 	BALL_ATTACHMENT: "BallAttachment",

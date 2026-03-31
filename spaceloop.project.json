@@ -34,6 +34,9 @@
       "Trails": {
         "$path": "assets/rbxm/Trails"
       },
+      "Rigs": {
+        "$path": "assets/rbxm/Rigs"
+      },
       "Images": {
         "$path": "assets/images"
       }

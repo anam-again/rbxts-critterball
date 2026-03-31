@@ -29,6 +29,7 @@ export class BotService implements OnStart {
 
 	private ballsFolder = ReplicatedStorage.WaitForChild(PART_NAMES.BALLS) as Folder;
 	private trailsFolder = ReplicatedStorage.WaitForChild(PART_NAMES.TRAILS) as Folder;
+	private rigsFolder = ReplicatedStorage.WaitForChild(PART_NAMES.RIGS) as Folder;
 	private bots = new Map<string, BotState>();
 	private nextBotIndex = 0;
 	private botsSpawned = false;
@@ -479,6 +480,9 @@ export class BotService implements OnStart {
 		// Create trail for bot
 		this.createTrailForBot(ball, sphere);
 
+		// Create character rig inside ball
+		this.createCharacterForBot(ball, sphere);
+
 		// Update raycast filter
 		this.updateRaycastFilter();
 
@@ -629,6 +633,90 @@ export class BotService implements OnStart {
 				}
 
 				trail.Parent = trailAnchor;
+			}
+		}
+	}
+
+	// ==================== CHARACTER SYSTEM ====================
+
+	private createCharacterForBot(ball: Model, sphere: BasePart): void {
+		// Get rig template
+		const rigTemplate = this.rigsFolder.FindFirstChild(BotConfig.DEFAULT_BOT_RIG) as Model | undefined;
+		if (!rigTemplate || !rigTemplate.IsA("Model")) {
+			warn(`${LOG_PREFIX} Cannot create character - rig template "${BotConfig.DEFAULT_BOT_RIG}" not found`);
+			return;
+		}
+
+		// Clone the rig
+		const character = rigTemplate.Clone();
+		character.Name = "BotCharacter";
+
+		// Find required parts
+		const humanoidRootPart = character.FindFirstChild(PART_NAMES.HUMANOID_ROOT_PART) as BasePart | undefined;
+		const humanoid = character.FindFirstChildOfClass("Humanoid");
+
+		if (!humanoidRootPart) {
+			warn(`${LOG_PREFIX} Rig missing HumanoidRootPart`);
+			character.Destroy();
+			return;
+		}
+
+		if (!humanoid) {
+			warn(`${LOG_PREFIX} Rig missing Humanoid`);
+			character.Destroy();
+			return;
+		}
+
+		// Position character at ball center
+		character.PivotTo(sphere.CFrame);
+
+		// Parent to ball model
+		character.Parent = ball;
+
+		// Attach character to ball
+		this.attachCharacterToBall(character, humanoidRootPart, humanoid, sphere);
+	}
+
+	private attachCharacterToBall(
+		character: Model,
+		humanoidRootPart: BasePart,
+		humanoid: Humanoid,
+		sphere: BasePart,
+	): void {
+		// Make all character parts massless so only ball mass matters
+		this.setCharacterMassless(character, true);
+
+		// Create attachment at ball center
+		const ballAttachment = new Instance("Attachment");
+		ballAttachment.Name = PART_NAMES.BALL_ATTACHMENT;
+		ballAttachment.Parent = sphere;
+
+		// Create attachment on HumanoidRootPart
+		const charAttachment = new Instance("Attachment");
+		charAttachment.Name = PART_NAMES.CHARACTER_ATTACHMENT;
+		charAttachment.Parent = humanoidRootPart;
+
+		// Connect with RigidConstraint
+		const constraint = new Instance("RigidConstraint");
+		constraint.Name = PART_NAMES.BALL_CONSTRAINT;
+		constraint.Attachment0 = ballAttachment;
+		constraint.Attachment1 = charAttachment;
+		constraint.Parent = sphere;
+
+		// Disable normal walking
+		humanoid.PlatformStand = true;
+
+		// Disable the Animate script if it exists
+		const animate = character.FindFirstChild(PART_NAMES.ANIMATE);
+		if (animate && animate.IsA("LocalScript")) {
+			animate.Enabled = false;
+		}
+	}
+
+	private setCharacterMassless(character: Model, massless: boolean): void {
+		for (const part of character.GetDescendants()) {
+			if (part.IsA("BasePart")) {
+				part.Massless = massless;
 			}
 		}
 	}

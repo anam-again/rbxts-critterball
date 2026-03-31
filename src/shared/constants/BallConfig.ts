@@ -172,6 +172,20 @@ export const BallConfig = {
 	POWERUP_PICKUP_PARTICLE_SIZE: 1.5, // Peak particle size
 	POWERUP_PICKUP_PARTICLE_LIFETIME: 0.8, // Particle lifetime in seconds
 	POWERUP_PICKUP_PARTICLE_COLOR: [255, 200, 50] as const, // Golden yellow color (RGB 0-255)
+
+	// Character animations (speed thresholds use display speed = actual * SPEED_DISPLAY_MULTIPLIER)
+	// R15 animations
+	ANIM_R15_IDLE_ID: "rbxassetid://507766388",
+	ANIM_R15_RUN_ID: "rbxassetid://507767714",
+	// R6 animations (from default Roblox animate script)
+	ANIM_R6_IDLE_ID: "rbxassetid://180435571",
+	ANIM_R6_RUN_ID: "rbxassetid://180426354",
+	// Custom fast animation (works with both rigs if properly made)
+	ANIM_FAST_ID: "rbxassetid://137805283388008",
+	ANIM_SPEED_IDLE_MAX: 100, // Display speed below this = idle
+	ANIM_SPEED_RUN_MAX: 300, // Display speed below this = run, above = fast
+	ANIM_CROSSFADE_TIME: 0.3, // Seconds to crossfade between animations
+	ANIM_BLEND_SPEED: 5, // How fast animation weights blend (higher = snappier)
 } as const;
 
 // Pre-computed Color3 values for boost zone colors (avoids repeated Color3 construction)
