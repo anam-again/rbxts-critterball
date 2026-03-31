@@ -165,7 +165,14 @@ Ball-related functionality is split across focused controllers:
 
 ### Visual Effects (BallEffectsController)
 
-All visual effects are managed by `BallEffectsController.ts`, which reads state from the `BallState` singleton.
+All visual effects are managed by `BallEffectsController.ts`. The controller tracks ALL balls in the game (players + bots) for trail and glow effects, while using `BallState` singleton for local player-only effects.
+
+#### Multi-Ball Tracking
+- Scans `Workspace` for `Ball_*` and `Bot_*` models on startup
+- Listens to `Workspace.ChildAdded` for new balls
+- Waits asynchronously for Sphere, TrailAnchor, and NeonGlow to replicate
+- Updates trail/glow effects for ALL tracked balls each frame
+- Local player-only effects (screen shake, FOV, blur, rolling dust) use `BallState`
 
 #### Impact Particles
 - Star texture particles on collisions
@@ -267,6 +274,12 @@ Server-controlled AI racers that auto-fill races. Bots do NOT use `SetNetworkOwn
 - Server applies impulses directly via `ApplyImpulse()`
 - Uses dedicated waypoints for navigation, race checkpoints for progress validation
 - Speed cap uses diminishing returns on bot's own impulses only - external forces (boosts, bouncers) can push past max speed
+
+#### Bot Visual Effects
+- **Trail system**: BotService creates trails using same pattern as CritterballService
+- **Client-side updates**: BallEffectsController tracks bot balls and updates trail/glow based on observed velocity
+- **Bouncer animations**: CritterballController detects bot sphere touches and triggers bouncer animations
+- Trail and neon glow scale with speed identically to player balls
 
 #### Waypoint Types
 - **Navigate waypoints** (`BotWaypoints` tag): Positions bots seek toward

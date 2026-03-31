@@ -50,6 +50,8 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - **Difficulty levels**: Easy, Medium, Hard with varying speed and turning ability
 - **Race integration**: Bots track checkpoints, laps, and compete for positions
 - **Stuck recovery**: Automatic respawn when bots get stuck or fall off track
+- **Visual effects**: Bots have the same trail and neon glow effects as players, scaling with speed
+- **Map interactions**: Bouncer animations trigger when bots hit them
 
 ## Multi-Place Universe
 
