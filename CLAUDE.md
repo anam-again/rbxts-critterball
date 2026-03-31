@@ -37,6 +37,7 @@ critterball/
 │   │   │   ├── BallConfig.ts      # Ball physics/effects tuning
 │   │   │   ├── BotConfig.ts       # Bot AI tuning values
 │   │   │   ├── LobbyConfig.ts     # Maps, gamemodes, party settings
+│   │   │   ├── MinimapConfig.ts   # Per-map minimap bounds/images
 │   │   │   ├── RaceConfig.ts      # Race laps, HUD styling, timers, position UI
 │   │   │   ├── PlaceIds.ts        # AUTO-GENERATED from places.json
 │   │   │   ├── PartNames.ts       # Centralized part/instance names
@@ -77,6 +78,7 @@ critterball/
 │       │       ├── SpeedometerController.ts
 │       │       ├── CheckpointController.ts  # Checkpoint detection, death barrier
 │       │       ├── RaceUIController.ts      # Race HUD, finish screen
+│       │       ├── MinimapController.ts     # Minimap with racer positions
 │       │       ├── GameModeController.ts    # Client gamemode state
 │       │       └── GameMenuController.ts    # In-game menu, return to lobby
 │       └── server/services/
@@ -309,6 +311,30 @@ Where:
 - Pulse animation when moving up in position
 - Position displayed at bottom of race HUD (uses UIListLayout with SortOrder.LayoutOrder)
 
+### Minimap System
+
+Displays a top-down map view with real-time racer positions on the left side of the screen.
+
+#### Components
+- **MinimapController** (client): Creates UI, scans for `Ball_*` and `Bot_*` models, updates indicator positions each frame
+- **MinimapConfig**: Per-map bounds (world X/Z to minimap X/Y), image asset IDs, UI styling
+
+#### Configuration
+Each map needs an entry in `MinimapConfig.MAP_BOUNDS` keyed by `MapId` attribute:
+```typescript
+Spaceloop: {
+  minX: -700, maxX: 800,
+  minZ: -1050, maxZ: 1100,
+  imageId: "rbxassetid://101750654026541",
+  // Optional: invertX, invertZ, imageTransparency
+}
+```
+
+#### Indicator Styling
+- Local player: Blue circle (12px)
+- Other racers: White circle (8px)
+- Uses indicator pooling to avoid GC overhead
+
 ### Gamemode System
 
 The game supports multiple gamemodes selected in the lobby and passed via teleport data.
@@ -448,6 +474,19 @@ Lobby settings in `src/shared/constants/LobbyConfig.ts`:
 - **MAPS**: Map configurations (id, name, description, placeId)
 - **GAMEMODES**: Gamemode configurations (id, name, description, availableMaps)
 - **PARTY_CONFIG**: Max size (8), invite expiry (60s), countdown duration (4s)
+
+## Key Configuration (MinimapConfig.ts)
+
+Minimap settings in `src/shared/constants/MinimapConfig.ts`:
+
+- **MAP_BOUNDS**: Per-map config keyed by MapId:
+  - `minX`, `maxX`, `minZ`, `maxZ`: World coordinate bounds
+  - `imageId`: Roblox asset ID for map image
+  - `invertX`, `invertZ`: Optional axis inversion flags
+  - `imageTransparency`: Optional image transparency (0-1)
+- **UI**: Width (200), height (275), left offset, corner radius
+- **LOCAL_PLAYER**: Blue color, 12px size
+- **OTHER_RACER**: White color, 8px size
 
 ## Network Events
 
@@ -621,6 +660,13 @@ Workspace/
 ```
 
 **Note**: Bot waypoints are for navigation hints only. Bots validate race progress against checkpoints (same as players).
+
+### Setting Up Minimap for a Map
+1. Add `MapId` attribute (string) to `Workspace.Map` folder (e.g., "Spaceloop")
+2. Add map bounds to `MinimapConfig.MAP_BOUNDS` in `src/shared/constants/MinimapConfig.ts`:
+   - `minX`, `maxX`, `minZ`, `maxZ`: World coordinate bounds
+   - `imageId`: Roblox asset ID for the map image (e.g., `"rbxassetid://123456"`)
+3. Upload a top-down map image to Roblox and use its asset ID
 
 ## Performance Notes
 

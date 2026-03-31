@@ -30,6 +30,10 @@ A Super Monkey Ball-style Roblox game where players roll around inside a physics
 - **Sandbox Mode**: Free play with immediate movement, no race UI, speedometer only
 - **In-game Menu**: Return to Lobby button accessible from any gamemode
 
+### Minimap
+- **Real-time tracking**: Shows all racers (players + bots) on a top-down map view
+- **Per-map configuration**: Extensible bounds and images for each map
+
 ### Racing System (Race Mode)
 - **Pre-race sequence**: Showcase camera, "Waiting for players" message, smooth camera transition
 - **Race start countdown**: 5-4-3-2-1-Race! with animated UI
@@ -87,6 +91,7 @@ src/
 │   │   ├── BallConfig.ts     # Ball physics/effects tuning
 │   │   ├── RaceConfig.ts     # Race settings, UI colors
 │   │   ├── LobbyConfig.ts    # Maps, gamemodes, party settings
+│   │   ├── MinimapConfig.ts  # Per-map minimap bounds/images
 │   │   ├── PartNames.ts      # Centralized part names
 │   │   ├── UINames.ts        # UI element names
 │   │   ├── UIColors.ts       # Pre-computed UI colors

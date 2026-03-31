@@ -56,6 +56,7 @@ export const ATTRIBUTE_NAMES = {
 	RESPAWN_BARRIER_Y: "RespawnBarrierY",
 	DEFAULT_GAMEMODE: "DefaultGamemode",
 	SKIP_INTRO: "SkipIntro",
+	MAP_ID: "MapId",
 
 	// Boost zone attributes (also in globals.ts SPEED_BOOST_ATTRIBUTES)
 	BOOST_FORCE: "BoostForce",

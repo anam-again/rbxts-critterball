@@ -33,6 +33,9 @@
       },
       "Trails": {
         "$path": "assets/rbxm/Trails"
+      },
+      "Images": {
+        "$path": "assets/images"
       }
     },
     "StarterPlayer": {

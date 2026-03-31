@@ -9,6 +9,7 @@ export const SCREEN_GUI_NAMES = {
 	QUEUE_GUI: "QueueGui",
 	GAME_MENU_UI: "GameMenuUI",
 	SPEEDOMETER_GUI: "SpeedometerGui",
+	MINIMAP_GUI: "MinimapGui",
 } as const;
 
 // Common UI element names
