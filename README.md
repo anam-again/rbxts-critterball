@@ -1,82 +1,126 @@
 # Critterball
 
-A Super Monkey Ball-style Roblox game where players roll around inside a physics-driven ball.
+A Super Monkey Ball-inspired multiplayer racing game built on Roblox, featuring physics-driven gameplay, AI opponents, and polished visual effects.
+
+---
+
+## About This Project
+
+Critterball demonstrates advanced game development concepts in a real-time multiplayer environment. This project showcases:
+
+### Architecture & Engineering
+
+- **TypeScript-First Development** — Built with [roblox-ts](https://roblox-ts.com/) for type safety, modern tooling, and maintainable code instead of raw Lua
+- **Entity-Component Architecture** — Uses [Flamework](https://flamework.fireboltofdeath.dev/) framework with dependency injection, services/controllers pattern, and typed networking
+- **Multi-Place Universe** — Modular deployment architecture with separate lobby and game world places, automated build pipeline, and Open Cloud API integration
+- **Server-Authoritative Design** — All race logic, checkpoint validation, and game state managed server-side to prevent cheating while maintaining responsive client-side physics
+
+### Real-Time Multiplayer Systems
+
+- **Network Ownership Management** — Client owns ball physics for responsive controls while server validates game events, requiring careful coordination for features like respawning
+- **State Machine Design** — Clean game state transitions (`WAITING → STARTING → COUNTDOWN → RACING`) with coordinated client/server behavior at each phase
+- **Real-Time Position Tracking** — Custom algorithm calculates race positions using checkpoint progress and distance scoring, accounting for complex track layouts with vertical overlaps
+
+### AI & Bot System
+
+- **Waypoint Navigation** — Bots follow navigation waypoints with configurable capture radii and jump zones
+- **Obstacle Avoidance** — Steering system that combines target-seeking with repulsion from marked obstacles
+- **Difficulty Scaling** — Three difficulty tiers with tunable speed multipliers, turn force, and max speed caps
+- **Race Integration** — Bots participate fully in races: crossing checkpoints, tracking laps, competing for positions, and auto-respawning when stuck
+
+### Visual Polish
+
+- **Dynamic Effects System** — Speed-responsive trails, impact particles, screen shake, FOV shifts, motion blur, and neon glow effects
+- **Character Animation Controller** — Speed-based animation state machine with smooth crossfade transitions, supporting both R6 and R15 rigs
+- **Showcase Camera** — Cinematic pre-race camera that moves between waypoints, with smooth interpolation to gameplay camera
+
+### Performance
+
+- **Throttled Operations** — Expensive raycasts and overlap checks run on configurable intervals rather than every frame
+- **Efficient Multi-Ball Tracking** — Single controller manages visual effects for all players and bots without per-ball overhead
+- **Connection Management** — Utility for proper cleanup of Roblox event connections to prevent memory leaks
+
+---
 
 ## Features
 
 ### Core Gameplay
-- Physics-based ball movement with impulse controls
-- Camera-relative WASD movement
-- Jump with ground detection
-- Speed cap with boosted acceleration at low speeds
-- Tight turning that redirects momentum
+- Physics-based ball movement using impulse forces
+- Camera-relative WASD controls with momentum-based turning
+- Jump with ground detection and velocity preservation
+- Boost zones and bouncer pads for track variety
 
-### Visual Effects
-- **Dynamic Trail**: Scales with speed (opacity, width, length), welded to ball for reliability
-- **Rolling Dust**: Particles when rolling, color matches ground
-- **Impact Stars**: Particle burst on collisions, scales with impact force
-- **Screen Shake**: On heavy impacts and at high speeds
-- **FOV Shift**: Wider field of view at higher speeds
-- **Trailing Camera**: Subtle camera lag for sense of speed
-- **Impact Blur**: Brief blur effect on heavy landings
-
-### Physics
-- Reduced gravity for floatier feel
-- Character becomes massless inside ball
-- Customizable friction and elasticity
-
-### Character Animations
-- **Speed-based animations**: Characters inside balls animate based on speed
-- **Idle**: Plays when stationary or slow (display speed 0-100)
-- **Run**: Plays at medium speeds (display speed 100-300)
-- **Fast**: Custom animation at high speeds (display speed 300+)
-- **Smooth crossfading**: Animations transition smoothly between states
-- **Rig auto-detection**: Supports both R6 and R15 character rigs
-
-### Gamemode System
-- **Race Mode**: Full race experience with countdown, showcase camera, timers, laps
-- **Sandbox Mode**: Free play with immediate movement, no race UI, speedometer only
-- **In-game Menu**: Return to Lobby button accessible from any gamemode
+### Racing
+- Server-authoritative checkpoint system with lap tracking
+- Pre-race showcase camera sequence
+- Animated countdown (5-4-3-2-1-Race!)
+- Live race HUD with timer, lap counter, and position indicator
+- Full leaderboard with animated position changes
+- Finish screen with final time display
 
 ### Minimap
-- **Real-time tracking**: Shows all racers (players + bots) on a top-down map view
-- **Per-map configuration**: Extensible bounds and images for each map
+- Real-time top-down view of all racers
+- Per-map configuration for bounds and imagery
+- Visual distinction between local player and competitors
 
-### Racing System (Race Mode)
-- **Pre-race sequence**: Showcase camera, "Waiting for players" message, smooth camera transition
-- **Race start countdown**: 5-4-3-2-1-Race! with animated UI
-- **Checkpoint-based racing**: Server-authoritative checkpoint validation
-- **3-lap races**: Configurable lap count with automatic lap tracking
-- **Death barrier**: Fall below the barrier to respawn at last checkpoint
-- **Race HUD**: Live timer, lap counter, checkpoint progress, and race position (fades in 5 seconds after start)
-- **Position tracking**: Real-time position display with gold/silver/bronze colors for top 3
-- **Leaderboard**: Full racer leaderboard showing all positions with animated row changes
-- **Finish screen**: Overlay with final time on race completion
+### Bot Racers
+- AI opponents auto-fill races (configurable up to 8 total racers)
+- Three difficulty levels: Easy, Medium, Hard
+- Full visual parity with players (trails, glow, animations)
+- Stuck detection with automatic respawn
 
-### Bot System (Race Mode)
-- **AI racers**: Server-controlled bots that auto-fill races (up to 8 total racers)
-- **Character models**: Bots have character rigs inside their balls, just like players
-- **Speed-based animations**: Characters animate based on ball speed (idle/run/fast) with smooth crossfading
-- **Waypoint navigation**: Bots follow dedicated waypoints with obstacle avoidance
-- **Difficulty levels**: Easy, Medium, Hard with varying speed and turning ability
-- **Race integration**: Bots track checkpoints, laps, and compete for positions
-- **Stuck recovery**: Automatic respawn when bots get stuck or fall off track
-- **Visual effects**: Bots have the same trail and neon glow effects as players, scaling with speed
-- **Map interactions**: Bouncer animations trigger when bots hit them
+### Gamemodes
+- **Race** — Full competitive experience with countdown, timers, and positions
+- **Sandbox** — Free play with immediate movement for practice or exploration
 
-## Multi-Place Universe
+---
 
-Critterball uses a multi-place architecture with separate places for different game modes:
+## Tech Stack
 
-Place IDs are defined in `places.json` (single source of truth).
+| Technology | Purpose |
+|------------|---------|
+| [roblox-ts](https://roblox-ts.com/) | TypeScript to Luau compiler |
+| [Flamework](https://flamework.fireboltofdeath.dev/) | Dependency injection framework |
+| [Rojo](https://rojo.space/) | File sync and project management |
+| Node.js | Build scripts and deployment automation |
 
-**Universe ID:** 9939379485
+---
+
+## Project Structure
+
+```
+critterball/
+├── places.json                 # Place IDs (single source of truth)
+├── scripts/                    # Build & deploy automation
+│
+├── src/
+│   ├── shared/                 # Code shared across all places
+│   │   ├── constants/          # Configuration (physics, UI, race settings)
+│   │   ├── types/              # TypeScript interfaces and enums
+│   │   ├── utilities/          # Helpers (color utils, connection manager)
+│   │   └── network.ts          # Shared network definitions
+│   │
+│   ├── lobby/                  # Lobby place
+│   │   ├── client/controllers/ # Party UI, queue system
+│   │   └── server/services/    # Party management, teleportation
+│   │
+│   └── game/                   # Game world places
+│       ├── client/
+│       │   ├── state/          # Shared state singleton
+│       │   └── controllers/    # Input, effects, camera, race UI
+│       └── server/services/    # Race logic, bots, checkpoints
+│
+├── assets/rbxm/                # Roblox model assets
+└── build/                      # Generated .rbxl files (gitignored)
+```
+
+---
 
 ## Development
 
 ### Prerequisites
-- Node.js
-- Rojo
+- Node.js (v18+)
+- [Rojo](https://rojo.space/) VS Code extension or CLI
 - Roblox Studio
 
 ### Setup
@@ -84,334 +128,104 @@ Place IDs are defined in `places.json` (single source of truth).
 npm install
 ```
 
-### NPM Scripts
+### Commands
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev <place>` | Start dev server (lobby/spaceloop) |
+| Command | Description |
+|---------|-------------|
+| `npm run dev <place>` | Start dev server (`lobby` or `spaceloop`) |
 | `npm run build` | Compile TypeScript |
-| `npm run build:rbxl <place>` | Build .rbxl file (lobby/spaceloop/all) |
-| `npm run deploy <place>` | Deploy to Roblox (lobby/spaceloop/all) |
-| `npm run release` | Full release: build, .rbxl, deploy |
+| `npm run build:rbxl <place>` | Build .rbxl file (`lobby`, `spaceloop`, or `all`) |
+| `npm run deploy <place>` | Deploy to Roblox |
+| `npm run release` | Full pipeline: build → .rbxl → deploy |
 | `npm run lint` | Run ESLint with auto-fix |
 
-### Project Structure
+### Workflow
 
-```
-src/
-├── shared/           # Shared across all places
-│   ├── constants/
-│   │   ├── BallConfig.ts     # Ball physics/effects tuning
-│   │   ├── RaceConfig.ts     # Race settings, UI colors
-│   │   ├── LobbyConfig.ts    # Maps, gamemodes, party settings
-│   │   ├── MinimapConfig.ts  # Per-map minimap bounds/images
-│   │   ├── PartNames.ts      # Centralized part names
-│   │   ├── UINames.ts        # UI element names
-│   │   ├── UIColors.ts       # Pre-computed UI colors
-│   │   └── InputActions.ts   # Input binding names
-│   ├── utilities/
-│   │   ├── ColorUtils.ts     # RGB to Color3 helpers
-│   │   └── ConnectionManager.ts
-│   ├── types/
-│   │   ├── RaceTypes.ts      # RaceGameState enum
-│   │   └── GameTypes.ts      # GamemodeId enum
-│   ├── network.ts
-│   └── globals.ts
-├── lobby/            # Lobby place only
-│   ├── client/
-│   │   ├── runtime.client.ts
-│   │   └── controllers/
-│   └── server/
-│       ├── runtime.server.ts
-│       └── services/
-└── game/             # Game worlds only
-    ├── client/
-    │   ├── runtime.client.ts
-    │   ├── state/
-    │   │   └── BallState.ts  # Shared ball state singleton
-    │   └── controllers/
-    │       ├── CritterballController.ts   # Input, interactions
-    │       ├── BallEffectsController.ts   # Visual effects
-    │       └── ...
-    └── server/
-        ├── runtime.server.ts
-        └── services/
-```
-
-### Rojo Project Files
-
-| File | Purpose |
-|------|---------|
-| `build.project.json` | Used by rbxtsc for compilation (includes all paths) |
-| `lobby.project.json` | Rojo project for lobby place |
-| `spaceloop.project.json` | Rojo project for Spaceloop game world |
-
-### Development Workflow
-
-1. Start dev server for your target place:
+1. Start the dev server:
    ```bash
-   npm run dev lobby
-   # or
    npm run dev spaceloop
    ```
 
-2. Open Roblox Studio and connect the Rojo plugin
+2. Open Roblox Studio and connect via Rojo plugin
 
-3. Play to test
+3. Playtest in Studio
 
-### Studio Setup (Game Worlds)
-
-Ball, trail, and character rig assets are stored in `assets/rbxm/` and automatically synced via Rojo:
-
-```
-ReplicatedStorage/
-├── Balls/
-│   └── DefaultBall/           (Model)
-│       └── Sphere             (Part)
-├── Trails/
-│   └── DefaultTrail/          (Folder)
-│       ├── TopAttachment      (Attachment)
-│       ├── BottomAttachment   (Attachment)
-│       └── Trail              (Trail)
-└── Rigs/
-    └── DefaultJonesy/         (Model, R6 character rig for bots)
-```
-
-### Race Track Setup (Game Worlds)
-
-1. **Create checkpoints folder**: Create a Folder in Workspace and tag it with `RaceCheckpoints` via CollectionService
-
-2. **Add checkpoint folders**: Add Folder children for each checkpoint:
-   - Name with a number suffix: `Checkpoint0`, `Checkpoint1`, `CP2`, etc. (number is parsed from name)
-   - A Part named `Checkpoint` inside (trigger zone): `CanCollide = false`, `CanTouch = true`
-   - Optional: Add `SpawnPoint1`, `SpawnPoint2`, etc. parts for spawn positions
-
-3. **Set death barrier**: Add `RespawnBarrierY` attribute (number) to the `Workspace.Map` folder
-
-4. **Set default gamemode** (optional): Add `DefaultGamemode` attribute (string) to `Workspace.Map`
-   - Value: `"race"` or `"sandbox"`
-   - Used when no TeleportData is present (e.g., Studio testing)
-
-```
-Workspace/
-├── Map/                        (Folder, attributes: RespawnBarrierY, DefaultGamemode)
-└── RaceCheckpoints/            (Folder, tagged "RaceCheckpoints")
-    ├── Checkpoint0/            (Folder, number parsed from name)
-    │   ├── Checkpoint          (Part, trigger zone)
-    │   ├── SpawnPoint1         (Part)
-    │   └── SpawnPoint2         (Part)
-    ├── Checkpoint1/            (Folder)
-    │   └── Checkpoint          (Part, trigger zone)
-    └── Checkpoint2/            (Folder)
-        └── Checkpoint          (Part, trigger zone)
-```
-
-### Showcase Camera Setup (Game Worlds)
-
-The showcase camera plays during the pre-race waiting period, moving between waypoints to show off the track.
-
-1. **Create waypoints folder**: Create a Folder in Workspace named `ShowcaseCameraWaypoints`
-
-2. **Tag the folder**: Add the `ShowcaseCameraWaypoints` tag via CollectionService
-
-3. **Add waypoint parts**: Add Part children for each camera position:
-   - Name with a number suffix: `Waypoint1`, `Waypoint2`, `Waypoint3`, etc.
-   - Rotate the part to face where the camera should look (uses LookVector)
-   - Set: `Anchored = true`, `Transparency = 1`, `CanCollide = false`
-
-```
-Workspace/
-└── ShowcaseCameraWaypoints/    (Folder, tagged "ShowcaseCameraWaypoints")
-    ├── Waypoint1               (Part, camera position/rotation)
-    ├── Waypoint2               (Part)
-    └── Waypoint3               (Part)
-```
-
-The camera smoothly moves between waypoints in order, looping back to the first. When the countdown starts, it transitions smoothly to the player's ball.
-
-### Bot Waypoint Setup (Game Worlds)
-
-Bots navigate using dedicated waypoints separate from race checkpoints. This allows fine-grained control over bot pathing.
-
-1. **Create navigate waypoints folder**: Create a Folder in Workspace named `BotWaypoints`
-
-2. **Tag the folder**: Add the `BotWaypoints` tag via CollectionService
-
-3. **Add waypoint parts**: Add Part children for each navigation point:
-   - Name with a number suffix: `Waypoint1`, `Waypoint2`, etc.
-   - Set: `Anchored = true`, `Transparency = 1`, `CanCollide = false`
-   - Optional attribute `JumpZone = true` for jump points
-   - Optional attribute `Radius` to override capture radius (default: 10)
-
-4. **Create avoid waypoints** (optional): For obstacles bots should steer around:
-   - Create a Folder named `BotAvoidWaypoints`, tag with `BotAvoidWaypoints`
-   - Add Part children at obstacle centers
-   - Optional attributes: `AvoidRadius` (default: 20), `AvoidStrength` (default: 1.0)
-
-```
-Workspace/
-├── BotWaypoints/               (Folder, tagged "BotWaypoints")
-│   ├── Waypoint1               (Part, first target)
-│   ├── Waypoint2               (Part)
-│   ├── Waypoint3               (Part, JumpZone=true for gaps)
-│   └── ...
-└── BotAvoidWaypoints/          (Folder, tagged "BotAvoidWaypoints")
-    ├── Avoid1                  (Part, obstacle center)
-    └── Avoid2                  (Part)
-```
-
-**Note**: Bots automatically spawn to fill races up to 8 total racers. They use waypoints for navigation but validate progress against race checkpoints for position tracking.
-
-## Controls
-
-| Key | Action |
-|-----|--------|
-| W | Move forward |
-| A | Move left |
-| S | Move backward |
-| D | Move right |
-| Space | Jump |
-| E | Use powerup |
-| Mouse | Rotate camera |
-| ☰ (top-right) | Open game menu (Return to Lobby) |
-
-## Configuration
-
-All gameplay tuning values are in `src/shared/constants/BallConfig.ts`:
-
-- Movement forces and speed limits
-- Jump power and cooldown
-- Gravity multiplier
-- Trail appearance
-- Particle effects
-- Camera effects (FOV, shake, blur)
-
-Race settings are in `src/shared/constants/RaceConfig.ts`:
-
-- Total laps per race
-- Default respawn barrier Y position
-- Pre-race timing (showcase duration, countdown duration)
-- Camera transition duration
-- Status message styling ("Waiting for players", "Race about to start")
-- Countdown UI styling (numbers, "Race!" text)
-- HUD positioning and styling
-- Finish screen appearance
-
-Gamemode settings are in `src/shared/constants/LobbyConfig.ts`:
-
-- Available gamemodes (Race, Sandbox)
-- Maps available per gamemode
-- Party configuration
-
-## Tech Stack
-
-- [roblox-ts](https://roblox-ts.com/) - TypeScript to Luau compiler
-- [Flamework](https://flamework.fireboltofdeath.dev/) - Game framework
-- [Rojo](https://rojo.space/) - Roblox project sync
+4. Deploy when ready:
+   ```bash
+   npm run release
+   ```
 
 ---
 
-## Deployment Guide
+## Configuration
 
-### Prerequisites
+### Ball Physics
+All movement tuning in `src/shared/constants/BallConfig.ts`:
+- Impulse forces, speed limits, gravity
+- Trail and particle effect parameters
+- Camera effects (FOV, shake, blur)
 
-1. **Environment Setup**: Copy `template.env` to `.env`:
-   ```bash
-   cp template.env .env
-   ```
+### Race Settings
+Race configuration in `src/shared/constants/RaceConfig.ts`:
+- Lap count, death barrier position
+- Pre-race timing (showcase, countdown)
+- HUD styling and positioning
 
-2. **Add API Key**: Get an Open Cloud API key from https://create.roblox.com/dashboard/credentials
-   - Add the "universe-places" API system
-   - Grant "Write" permission
-   - Add your experience to allowed experiences
-   - Paste the key in `.env` as `UNIVERSE_PUSH_API_KEY`
+### Bot AI
+Bot behavior in `src/shared/constants/BotConfig.ts`:
+- Difficulty presets (speed/turn multipliers)
+- Waypoint capture radius
+- Stuck detection timing
 
-3. **Close Roblox Studio**: Ensure Studio is not connected to places you're deploying.
+---
 
-### Release Process
+## Track Setup
 
-#### Step 1: Make Changes
+### Checkpoints
+1. Create a Folder tagged `RaceCheckpoints` in Workspace
+2. Add child Folders named `Checkpoint0`, `Checkpoint1`, etc.
+3. Each checkpoint folder contains:
+   - `Checkpoint` (Part) — Trigger zone (`CanCollide = false`, `CanTouch = true`)
+   - `SpawnPoint1`, `SpawnPoint2`, etc. (Parts) — Respawn positions
 
-Develop and test locally:
-```bash
-npm run dev lobby
-```
+### Bot Waypoints
+1. Create a Folder tagged `BotWaypoints` in Workspace
+2. Add Parts named `Waypoint1`, `Waypoint2`, etc.
+3. Optional attributes: `JumpZone` (boolean), `Radius` (number)
 
-#### Step 2: Build and Review
+### Showcase Camera
+1. Create a Folder tagged `ShowcaseCameraWaypoints` in Workspace
+2. Add Parts for camera positions (rotation determines look direction)
+3. Name with number suffix for ordering: `Waypoint1`, `Waypoint2`, etc.
 
-Run the build to catch errors:
-```bash
-npm run build
-```
+---
 
-**Expected changes:**
-- `out/` - Compiled Lua (gitignored)
-- `src/shared/constants/PlaceIds.ts` - Auto-generated from `places.json`
+## Controls
 
-#### Step 3: Create .rbxl Files
+| Input | Action |
+|-------|--------|
+| WASD | Move (camera-relative) |
+| Space | Jump |
+| E | Use powerup |
+| Mouse | Rotate camera |
+| Menu button (top-right) | Return to lobby |
 
-Build .rbxl files for backup/review:
-```bash
-npm run build:rbxl all
-```
+---
 
-**Expected changes:**
-- `build/Lobby.rbxl` - Compiled lobby
-- `build/Spaceloop.rbxl` - Compiled Spaceloop game world
+## Deployment
 
-#### Step 4: Review with Claude
+### Setup
 
-Before committing, have Claude review:
-```
-Please review my changes. Check for:
-- Security issues
-- Code quality
-- Missing error handling
-- Potential bugs
-```
+1. Copy `template.env` to `.env`
+2. Add your Open Cloud API key from [create.roblox.com/credentials](https://create.roblox.com/credentials)
+   - Enable "universe-places" with Write permission
+3. Close Roblox Studio before deploying
 
-#### Step 5: Commit
+### Release
 
-```bash
-git add .
-git commit -m "Description of changes"
-```
-
-**Committed files:**
-- Source code (`src/`)
-- Config (`places.json`, `package.json`)
-- Generated `PlaceIds.ts`
-
-**NOT committed (gitignored):**
-- `out/`, `build/`, `.env`, `node_modules/`
-
-#### Step 6: Deploy to Roblox
-
-Full release (build + .rbxl + deploy):
 ```bash
 npm run release
 ```
 
-Or deploy individually:
-```bash
-npm run deploy lobby
-npm run deploy spaceloop
-```
+This builds TypeScript, generates .rbxl files, and deploys all places to Roblox.
 
-#### Step 7: Push to Git
-
-```bash
-git push origin main
-```
-
-### Troubleshooting
-
-| Error | Solution |
-|-------|----------|
-| "Server is busy" | Close Studio, wait, retry (auto-retries 3x) |
-| "API Key insufficient scopes" | Add "universe-places:write" permission |
-| "ROBLOSECURITY not found" | Check `.env` exists with valid credentials |
-
-### Updating Place IDs
-
-Edit `places.json`, then run `npm run build` to regenerate `PlaceIds.ts`.
